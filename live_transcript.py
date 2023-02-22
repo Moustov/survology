@@ -10,6 +10,9 @@ import queue
 import sys
 import sounddevice as sd
 
+
+# punctuation: https://github.com/benob/recasepunc
+
 # models : https://alphacephei.com/vosk/models
 
 from vosk import Model, KaldiRecognizer

@@ -4,6 +4,7 @@ from tkinter import Label, Menu, messagebox, END
 # https://www.youtube.com/watch?v=XhCfsuMyhXo&list=PLCC34OHNcOtoC6GglhF3ncJ5rLwQrLGnV&index=6
 from tkinter.filedialog import askopenfilename
 
+from audiofile_transcript import AudioFileTranscript
 from live_transcript import LiveTranscript
 
 
@@ -56,10 +57,11 @@ class RootWindow(tkinter.Tk):
         transcript.display(self)
 
     def do_transcript_record(self):
-        pass
+        transcript = AudioFileTranscript()
+        transcript.display(self)
 
     def do_about(self):
-        messagebox.showinfo("Harmony tools", f"(c) C. Moustier - 2023\nBased on pyHarmonyTooling v.{version('pyHarmonyTooling')} - https://github.com/Moustov/pyharmonytooling")
+        messagebox.showinfo("Survology", f"(c) C. Moustier - 2023")
 
     def open_file(self):
         file = askopenfilename(title="Choose the file to open",
