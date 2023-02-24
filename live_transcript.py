@@ -1,21 +1,21 @@
+import argparse
 import json
+import queue
+import sys
 import threading
+import time
 import tkinter
 from datetime import datetime
 from tkinter import Text, Label, Button
-from tkinter.ttk import Progressbar
+from tkinter.constants import NO, CENTER, W, END
+from tkinter.ttk import Progressbar, Treeview
 
-import argparse
-import queue
-import sys
 import sounddevice as sd
+from vosk import Model, KaldiRecognizer
 
 
 # punctuation: https://github.com/benob/recasepunc
-
 # models : https://alphacephei.com/vosk/models
-
-from vosk import Model, KaldiRecognizer
 
 
 class LiveTranscript(tkinter.Tk):
@@ -36,8 +36,26 @@ class LiveTranscript(tkinter.Tk):
         self.progress_bar = Progressbar(root, orient='horizontal', mode='indeterminate', length=280)
         self.progress_bar.pack()
 
-        self.transcription_text = Text(root)
+        self.sentences = Treeview(root)
+        self.sentences['columns'] = ('Timecode', 'Text')
+        self.sentences.column("#0", width=0, stretch=NO)
+        self.sentences.column('Timecode', anchor=CENTER, width=60)
+        self.sentences.column('Text', anchor=W, width=380)
+
+        self.sentences.heading("#0", text="", anchor=CENTER)
+        self.sentences.heading('Timecode', text="Timecode", anchor=CENTER)
+        self.sentences.heading('Text', text="Text", anchor=CENTER)
+        # http://tkinter.fdex.eu/doc/event.html#events
+        self.sentences.bind("<ButtonRelease-1>", self._on_sentence_select)
+        self.sentences.pack()
+
+        self.transcription_text = Text(root, height=5)
         self.transcription_text.pack()
+
+    def _on_sentence_select(self, event):
+        item = self.sentences.item(self.sentences.selection())['values']
+        self.transcription_text.delete('1.0', END)
+        self.transcription_text.insert('end', f"{item[1]}")
 
     def _do_listen(self):
         listen_thread = threading.Thread(target=self._transcript, name="_transcript")
@@ -101,20 +119,24 @@ class LiveTranscript(tkinter.Tk):
                 print("#" * 80)
 
                 rec = KaldiRecognizer(model, args.samplerate)
-                partial = {}
-                timecode = ""
+                formatted_timecode = ""
+                index = 0
+                start_time = datetime.now()
                 while True:
                     data = self.queue.get()
                     if rec.AcceptWaveform(data):
                         txt = json.loads(rec.Result())
                         if txt['text'] != "":
-                            self.transcription_text.insert('end', f"{timecode}: {txt['text']}\n\n")
+                            formatted_timecode = time.strftime("%H:%M:%S", time.gmtime(timecode_sec))
+                            self.sentences.insert(parent="", index='end', iid=index, text="",
+                                                  values=(str(formatted_timecode), txt['text']))
+                            index += 1
                     else:
                         partial = json.loads(rec.PartialResult())
                         if partial["partial"] == "":
                             chrono = datetime.now()
-                            timecode = chrono.strftime("%H:%M:%S.%f")
-                        print(timecode, partial)
+                            timecode_sec = (chrono - start_time).seconds
+                        print(formatted_timecode, partial)
                     if dump_fn is not None:
                         dump_fn.write(data)
 
@@ -131,5 +153,3 @@ def int_or_str(text):
         return int(text)
     except ValueError:
         return text
-
-
