@@ -5,11 +5,12 @@ import sys
 import threading
 import time
 import tkinter
+import wave
 from datetime import datetime
 from tkinter import Text, Label, Button
 from tkinter.constants import NO, CENTER, W, END
 from tkinter.ttk import Progressbar, Treeview
-
+import soundfile
 import sounddevice as sd
 from vosk import Model, KaldiRecognizer
 
@@ -107,11 +108,9 @@ class LiveTranscript(tkinter.Tk):
             else:
                 model = Model(lang=args.model)
 
-            if args.filename:
-                dump_fn = open(args.filename, "wb")
-            else:
-                dump_fn = None
+            dump_fn = open("audio.wav", "wb")
 
+            whole_record = []
             with sd.RawInputStream(samplerate=args.samplerate, blocksize=8000, device=args.device,
                                    dtype="int16", channels=1, callback=self.callback):
                 print("#" * 80)
@@ -122,8 +121,11 @@ class LiveTranscript(tkinter.Tk):
                 formatted_timecode = ""
                 index = 0
                 start_time = datetime.now()
+
                 while True:
                     data = self.queue.get()
+                    whole_record += data
+
                     if rec.AcceptWaveform(data):
                         txt = json.loads(rec.Result())
                         if txt['text'] != "":
@@ -145,6 +147,7 @@ class LiveTranscript(tkinter.Tk):
             parser.exit(0)
         except Exception as e:
             parser.exit(type(e).__name__ + ": " + str(e))
+        soundfile.write("conversation.wav", data)
 
 
 def int_or_str(text):
