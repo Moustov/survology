@@ -33,6 +33,26 @@ def chrono_to_time_code(hh_mm_ss: str) -> int:
     return h + m + s
 
 
+def get_media_duration(file: str) -> float:
+    """
+
+    :param file: multimedia file
+    :return: number of seconds
+    """
+    mm_file = file.replace("'", "\'")
+    cmd = rf'ffmpeg-master-latest-win64-gpl-shared\bin\ffmpeg -i "{mm_file}" 2>&1 ffmpeg.log'
+    print("cmd", cmd)
+    process = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+    print("output", process.stdout)
+    for l in str(process.stdout).split("\\n"):
+        if l.strip().startswith("Duration:"):
+            d = l.split(",")
+            duration = d[0].split(":")
+            res = int(duration[1].strip()) * 3600 + int(duration[2]) * 60 + float(duration[3])
+            return res
+
+
 class AudioFileTranscript(tkinter.Tk):
     PROGRESS_BAR_ROW_POSTION = 2
     model = Model(lang="fr")
@@ -70,9 +90,10 @@ class AudioFileTranscript(tkinter.Tk):
         # controllers
         self.carry_on = None
         self.debug = True
-        self.pause_status = False
+        self.pause_status = True
         self.duration = 1
         self.refresh_player_position_job = None
+        self.current_timecode = None    # in ms
         # transcription
         self.timecode = None
         self.text_index = 0
@@ -103,9 +124,9 @@ class AudioFileTranscript(tkinter.Tk):
         self.save_button = Button(self.frame, text='Save transcription', command=self._do_save_transcription)
         self.save_button.pack()
 
-    def _do_play(self):
+    def _do_transcription_resume(self):
         self.carry_on = True
-        listen_thread = threading.Thread(target=self._transcript, name="_transcript")
+        listen_thread = threading.Thread(target=self._do_launch_transcription, name="_transcript")
         listen_thread.start()
 
     def _do_save_transcription(self):
@@ -113,7 +134,7 @@ class AudioFileTranscript(tkinter.Tk):
         with open(f"{self.file_to_transcript}.json", "w", encoding='utf-8') as file:
             json.dump(transcription, file, indent=4, ensure_ascii=False)
 
-    def _do_stop(self):
+    def _do_transcription_freeze(self):
         self.carry_on = False
 
     def _do_select_audio_file(self):
@@ -132,12 +153,15 @@ class AudioFileTranscript(tkinter.Tk):
         else:
             if self.debug:
                 print("No existing transcription found")
-        self.duration = self.get_media_duration(self.file_to_transcript)
+        self.duration = get_media_duration(self.file_to_transcript)
         self.duration_text.set("duration: " + time_code_to_chrono(self.duration))
+        self.player_slider_scale.configure(to=self.duration)
         self.player_slider_scale.configure(tickinterval=self.duration // 10)
+        self._do_player_play()
+        self._do_player_pause()
         Tk.update(self.frame)
 
-    def _do_start_extracting_text(self):
+    def _do_transcription_start(self):
         self.transcription_tree.clear_data()
         self.timecode = None
         self.progress_bar['maximum'] = self.duration
@@ -148,13 +172,13 @@ class AudioFileTranscript(tkinter.Tk):
         self.carry_on = True
         self.text_index = 0
         self.start = 0
-        listen_thread = threading.Thread(target=self._transcript, name="_transcript")
+        listen_thread = threading.Thread(target=self._do_launch_transcription, name="_transcript")
         listen_thread.start()
 
-    def _transcript(self):
-        self.start_transcription(self.file_to_transcript)
+    def _do_launch_transcription(self):
+        self.start_transcription_thread(self.file_to_transcript)
 
-    def start_transcription(self, file_path: str):
+    def start_transcription_thread(self, file_path: str):
         time_limit = 2  # seconds
         while self.carry_on and self.start <= self.duration:
             # print("start", start)
@@ -188,24 +212,6 @@ class AudioFileTranscript(tkinter.Tk):
                 self.progress_bar['value'] += time_limit
         # self.progress_bar.stop()
 
-    def get_media_duration(self, file: str) -> float:
-        mm_file = file.replace("'", "\'")
-        cmd = rf'ffmpeg-master-latest-win64-gpl-shared\bin\ffmpeg -i "{mm_file}" 2>&1 ffmpeg.log'
-        if self.debug:
-            print("cmd", cmd)
-        process = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-
-        if self.debug:
-            print("output", process.stdout)
-        for l in str(process.stdout).split("\\n"):
-            if self.debug:
-                print(">>", l)
-            if l.strip().startswith("Duration:"):
-                d = l.split(",")
-                duration = d[0].split(":")
-                res = int(duration[1].strip()) * 3600 + int(duration[2]) * 60 + float(duration[3])
-                return res
-
     def display_audio_file_frame(self):
         self.file_labelframe = LabelFrame(self.frame, text='File')
         self.file_labelframe.pack(fill=BOTH, expand=1)
@@ -223,11 +229,13 @@ class AudioFileTranscript(tkinter.Tk):
                                         length=280)
         self.progress_bar.grid(row=0, column=0, columnspan=3)
         self.start_transcription_button = Button(self.progression_labelframe, text='start',
-                                                 command=self._do_start_extracting_text)
+                                                 command=self._do_transcription_start)
         self.start_transcription_button.grid(row=1, column=0)
-        self.freeze_transcription_button = Button(self.progression_labelframe, text='freeze', command=self._do_stop)
+        self.freeze_transcription_button = Button(self.progression_labelframe, text='freeze',
+                                                  command=self._do_transcription_freeze)
         self.freeze_transcription_button.grid(row=1, column=1)
-        self.resume_transcription_button = Button(self.progression_labelframe, text='run', command=self._do_play)
+        self.resume_transcription_button = Button(self.progression_labelframe, text='resume',
+                                                  command=self._do_transcription_resume)
         self.resume_transcription_button.grid(row=1, column=2)
         self.duration_label = Label(self.progression_labelframe, textvariable=self.duration_text)
         self.duration_label.grid(row=1, column=3)
@@ -266,39 +274,47 @@ class AudioFileTranscript(tkinter.Tk):
 
     def _on_transcription_row_selected(self, event):
         tree = event.widget
-        selection = [tree.item(item)["text"] for item in tree.selection()]
+        # selection = [tree.item(item)["text"] for item in tree.selection()]    # tree part
         row = [tree.item(item)["values"] for item in tree.selection()]
-        print("selected items:", selection, row)
-        current = chrono_to_time_code(row[0][0])
-        print("_on_select_transcription_line current", current)
-        self.player_slider_value.set(current)  # .set_pos() works in seconds
-        pygame.mixer.music.set_pos(current * 1000)
-        print("---pos set row selected", pygame.mixer.music.get_pos())
+        print("selected items:", row)
+        if row:
+            current_sec = chrono_to_time_code(row[0][0])
+            self.current_timecode = current_sec * 1000
+            print("_on_select_transcription_line current", current_sec)
+            self._set_mixer_player_position_only(current_sec)
+            # self._set_mixer_ui_position_only(self.current_timecode / 1000)
 
-    def playsong(self):
+    def _do_player_play(self):
         # Loading Selected Song
         pygame.mixer.music.load(self.file_to_transcript)
         # Playing Selected Song
         self.player_slider_scale.configure(to=self.duration)
         if self.debug:
             print("duration updated", self.duration)
-        self.player_slider_value.set(0)
-        self.player_slider_scale.configure(from_=0)
-        self._refresh_player_position()
-        pygame.mixer.music.play()
+        self.current_timecode = 0
+        self.pause_status = False
+        pygame.mixer.music.play(loops=0, start=0)
+        self.player_slider_scale.configure(from_=self.current_timecode)
+        # self._set_mixer_ui_position_only(self.current_timecode)
+        self._on_timer_adapt_to_mixer_position()
 
-    def pausesong(self):
+    def _do_player_pause(self):
         pygame.mixer.music.pause()
         if self.refresh_player_position_job:
+            self.pause_status = True
             self.frame.after_cancel(self.refresh_player_position_job)  # Loop every sec
             self.refresh_player_position_job = None
 
-    def unpausesong(self):
-        self._refresh_player_position()
-        pygame.mixer.music.unpause()
+    def _do_player_unpause(self):
+        self.pause_status = False
+        # pygame.mixer.music.unpause()
+        pygame.mixer.music.rewind()  # for MP3 only: https://docs.w3cub.com/pygame/ref/music#pygame.mixer.music.set_pos
+        pygame.mixer.music.play(loops=0, start=self.current_timecode / 1000)
+        self._on_timer_adapt_to_mixer_position()
 
-    def stopsong(self):
+    def _do_player_stop(self):
         pygame.mixer.music.stop()
+        self.pause_status = True
         if self.refresh_player_position_job:
             self.frame.after_cancel(self.refresh_player_position_job)  # Loop every sec
             self.refresh_player_position_job = None
@@ -314,16 +330,16 @@ class AudioFileTranscript(tkinter.Tk):
         # self.play_button.pack()
         #
         # Inserting Play Button
-        self.play_button = Button(player_labelframe, text="|>", command=self.playsong, width=10, height=1)
+        self.play_button = Button(player_labelframe, text="|>", command=self._do_player_play, width=10, height=1)
         self.play_button.grid(row=0, column=0, padx=10, pady=5)
         # Inserting Pause Button
-        self.pause_button = Button(player_labelframe, text="||", command=self.pausesong, width=8, height=1)
+        self.pause_button = Button(player_labelframe, text="||", command=self._do_player_pause, width=8, height=1)
         self.pause_button.grid(row=0, column=1, padx=10, pady=5)
         # Inserting Unpause Button
-        self.unpause_button = Button(player_labelframe, text="UNPAUSE", command=self.unpausesong, width=10, height=1)
+        self.unpause_button = Button(player_labelframe, text="UNPAUSE", command=self._do_player_unpause, width=10, height=1)
         self.unpause_button.grid(row=0, column=2, padx=10, pady=5)
         # Inserting Stop Button
-        self.stop_button = Button(player_labelframe, text="STOP", command=self.stopsong, width=10, height=1)
+        self.stop_button = Button(player_labelframe, text="STOP", command=self._do_player_stop, width=10, height=1)
         self.stop_button.grid(row=0, column=3, padx=10, pady=5)
         self.player_slider_value = DoubleVar()
         self.player_slider_scale = Scale(player_labelframe, to=self.duration if self.duration else 1, orient=HORIZONTAL,
@@ -341,43 +357,64 @@ class AudioFileTranscript(tkinter.Tk):
         :return:
         """
         pos = self.player_slider_value.get()
-        pygame.mixer.music.set_pos(pos)
-        print("---pos set slider", pygame.mixer.music.get_pos())
-        self._set_transcription_position(pos)
+        self.current_timecode = pos * 1000
+        self._set_mixer_player_position_only(pos)
+        self._set_mixer_ui_position_only(pos)
 
-    def _refresh_player_position(self):
-        print("pos update", pygame.mixer.music.get_busy())
-        print("_refresh_player_position pos", pygame.mixer.music.get_pos())
-        # if pygame.mixer.music.get_busy():
-        current_millisec = pygame.mixer.music.get_pos()  # .get_pos() returns integer in milliseconds
-        print('current = ', current_millisec, type(current_millisec))
-        self.player_slider_value.set(current_millisec / 1000)  # .set_pos() works in seconds
-        print('slider_value = ', self.player_slider_value.get(), type(self.player_slider_value.get()))
-        # update treeview selection
-        self._set_transcription_position(current_millisec)
-        self.refresh_player_position_job = self.frame.after(1000, lambda: self._refresh_player_position())  # Loop every sec
-        # self.player_slider_scale.set(self.player_slider_value.get())
+    def _set_mixer_ui_position_only(self, pos_sec: int):
+        self.current_timecode = pos_sec * 1000
+        print("---_set_mixer_ui_position_only", pos_sec, pygame.mixer.music.get_pos())
+        self.player_slider_value.set(pos_sec)
+        self._set_transcription_position(pos_sec)
+        # self.pause_status = False
+        # self._adapt_to_mixer_position()
 
-    def _set_transcription_position(self, pos: int):
+    def _set_mixer_player_position_only(self, pos_sec):
+        self.current_timecode = pos_sec * 1000
+        self._do_player_unpause()
+        self._do_player_pause()
+        # Tk.update(self.frame)
+
+    def _on_timer_adapt_to_mixer_position(self):
+        if not self.pause_status:
+            self._set_mixer_ui_position_only(self.current_timecode / 1000)
+            #
+            print("pos update", pygame.mixer.music.get_busy())
+            print("_refresh_player_position pos", pygame.mixer.music.get_pos())
+            # if pygame.mixer.music.get_busy():
+            current_millisec = pygame.mixer.music.get_pos()  # .get_pos() returns integer in milliseconds
+            self.current_timecode = current_millisec
+            print('current = ', current_millisec, type(current_millisec))
+            self.player_slider_value.set(current_millisec / 1000)  # .set_pos() works in seconds
+            print('slider_value = ', self.player_slider_value.get(), type(self.player_slider_value.get()))
+            # # update treeview selection
+            # self._set_transcription_position(current_millisec)
+            self.refresh_player_position_job = self.frame.after(1000,
+                                                                lambda: self._on_timer_adapt_to_mixer_position())  # Loop every sec
+            # self.player_slider_scale.set(self.player_slider_value.get())
+
+    def _set_transcription_position(self, pos_sec: int):
         """
         select row in treeview
         todo : when using tree part for interview parts, see https://youtu.be/JM-HrhKIjWU to select children as well
         todo : implement dichotomy search
-        :param pos:
+        :param pos_sec:
         :return:
         """
         prev_sec = 0
-        prev_row_id = None
-        for row_id in self.transcription_tree.get_children():
+        chidren = self.transcription_tree.get_children()
+        prev_row_id = chidren[0]
+        for row_id in chidren:
             data = self.transcription_tree.item(row_id)['values']
             sec = chrono_to_time_code(data[0])
             # if self.debug:
             #     print(f"{prev_sec} < {pos / 1000} <= {sec}", prev_sec < pos <= sec)
-            if prev_sec < pos / 1000 <= sec:
-                if prev_row_id:
-                    self.transcription_tree.selection_set(prev_row_id)
-                else:
-                    self.transcription_tree.selection_set(row_id)
+            if prev_sec < pos_sec <= sec:
+                # if prev_row_id:
+                #     self.transcription_tree.selection_set(prev_row_id)
+                # else:
+                self.transcription_tree.selection_set(prev_row_id)
                 break
             prev_sec = sec
             prev_row_id = row_id
+        print("_set_transcription_position", pos_sec, prev_row_id)
