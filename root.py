@@ -15,17 +15,18 @@ class RootWindow(tkinter.Tk):
         self.search_cadence = None
         self.live_hearing = None
         self.menu_bar = None
-        self._set_layout()
+        self.display()
 
-    def _set_layout(self):
+    def display(self):
         self.title('Survology')
         self.geometry('800x600')
         self._add_menu()
+        self._add_toolbar()
         self._add_content()
 
     def _add_content(self):
-        my_label = Label(self, text="Harmony tools")
-        my_label.pack()
+        my_label = Label(self, text="Survology v0.1")
+        my_label.grid(row=0, column=0)
 
     def _add_menu(self):
         """
@@ -58,7 +59,7 @@ class RootWindow(tkinter.Tk):
 
     def do_transcript_record(self):
         transcript = AudioFileTranscript()
-        transcript.display(self)
+        transcript.display(self, grid_row=1, grid_col=0)
 
     def do_about(self):
         messagebox.showinfo("Survology", f"(c) C. Moustier - 2023")
@@ -70,6 +71,9 @@ class RootWindow(tkinter.Tk):
 
     def do_something(self):
         print("Menu clicked")
+
+    def _add_toolbar(self):
+        pass
 
 
 if __name__ == "__main__":
