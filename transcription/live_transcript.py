@@ -108,7 +108,7 @@ class LiveTranscript(tkinter.Tk):
             else:
                 model = Model(lang=args.model)
 
-            dump_fn = open("audio.wav", "wb")
+            dump_fn = open("../audio.wav", "wb")
 
             whole_record = []
             with sd.RawInputStream(samplerate=args.samplerate, blocksize=8000, device=args.device,

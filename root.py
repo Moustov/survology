@@ -1,11 +1,10 @@
 import tkinter
-from importlib.metadata import version
-from tkinter import Label, Menu, messagebox, END
+from tkinter import Label, Menu, messagebox
 # https://www.youtube.com/watch?v=XhCfsuMyhXo&list=PLCC34OHNcOtoC6GglhF3ncJ5rLwQrLGnV&index=6
 from tkinter.filedialog import askopenfilename
 
-from audiofile_transcript import AudioFileTranscript
-from live_transcript import LiveTranscript
+from transcription.audiofile_transcript import AudioFileTranscript
+from transcription.live_transcript import LiveTranscript
 
 
 class RootWindow(tkinter.Tk):
