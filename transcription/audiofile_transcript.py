@@ -10,11 +10,13 @@ from tkinter.ttk import Progressbar
 
 import pygame
 from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable
+# punctuation: https://github.com/benob/recasepunc
+# models : https://alphacephei.com/vosk/models
 from vosk import Model, KaldiRecognizer, SetLogLevel
 
 
-# punctuation: https://github.com/benob/recasepunc
-# models : https://alphacephei.com/vosk/models
+
+# https://stackoverflow.com/questions/73089784/problem-mixer-music-get-pos-after-set-position-by-mixer-music-set-pos
 
 def time_code_to_chrono(timecode: float) -> str:
     h = int(timecode // 3600)
@@ -24,6 +26,11 @@ def time_code_to_chrono(timecode: float) -> str:
 
 
 def chrono_to_time_code(hh_mm_ss: str) -> int:
+    """
+    converts hhh:mm:ss.mmm in to nb of seconds
+    :param hh_mm_ss:
+    :return:
+    """
     # print("chrono_to_time_code", hh_mm_ss)
     parts = hh_mm_ss.split(":")
     # print("parts", parts)
@@ -94,6 +101,7 @@ class AudioFileTranscript(tkinter.Tk):
         self.duration = 1
         self.refresh_player_position_job = None
         self.current_timecode = None    # in ms
+        self.current_timecode_offset = 0
         # transcription
         self.timecode = None
         self.text_index = 0
@@ -198,8 +206,7 @@ class AudioFileTranscript(tkinter.Tk):
                         txt = json.loads(self.rec.Result())
                         if txt['text'] != "":
                             self.transcription_tree.insert(parent="", index='end', iid=self.text_index, text="",
-                                                           values=(
-                                                               time_code_to_chrono(self.timecode), txt['text']))
+                                                           values=(time_code_to_chrono(self.timecode), txt['text']))
                             self.text_index += 1
                             self.transcription_tree.yview_moveto(1.0)
                     else:
@@ -248,7 +255,7 @@ class AudioFileTranscript(tkinter.Tk):
         self.transcription_tree = mtkEditTable(self.transcription_content_labelframe, columns=col_ids,
                                                column_titles=col_titles)
         # https://stackoverflow.com/questions/32289175/list-of-all-tkinter-events
-        self.transcription_tree.bind("<ButtonRelease-1>", self._on_transcription_row_selected)
+        self.transcription_tree.bind("<ButtonRelease-1>", self._on_select_transcription_row)
         self.transcription_tree.debug = True
         # self.transcription_tree['columns'] = ('chrono', 'Text', 'tags')
         # self.transcription_tree.column("#0", width=0, stretch=NO)
@@ -272,17 +279,24 @@ class AudioFileTranscript(tkinter.Tk):
         # self.transcription_tree.configure(xscrollcommand=self.horscrlbar.set)
         #
 
-    def _on_transcription_row_selected(self, event):
+    def _on_select_transcription_row(self, event):
         tree = event.widget
         # selection = [tree.item(item)["text"] for item in tree.selection()]    # tree part
         row = [tree.item(item)["values"] for item in tree.selection()]
         print("selected items:", row)
         if row:
             current_sec = chrono_to_time_code(row[0][0])
-            self.current_timecode = current_sec * 1000
-            print("_on_select_transcription_line current", current_sec)
+            self.current_timecode_offset = current_sec * 1000
+            # for MP3 - https://stackoverflow.com/questions/73089784/problem-mixer-music-get-pos-after-set-position-by-mixer-music-set-pos
+            self.current_timecode = 0
+
+            print("_on_select_transcription_line current", current_sec, self.current_timecode_offset)
+            self._set_mixer_player_position_only(self.current_timecode_offset)
+            self.player_slider_value.set(current_sec)
+
             self._set_mixer_player_position_only(current_sec)
-            # self._set_mixer_ui_position_only(self.current_timecode / 1000)
+            self._set_mixer_ui_position_only(current_sec)
+            # self._set_transcription_position(pos)
 
     def _do_player_play(self):
         # Loading Selected Song
@@ -295,8 +309,7 @@ class AudioFileTranscript(tkinter.Tk):
         self.pause_status = False
         pygame.mixer.music.play(loops=0, start=0)
         self.player_slider_scale.configure(from_=self.current_timecode)
-        # self._set_mixer_ui_position_only(self.current_timecode)
-        self._on_timer_adapt_to_mixer_position()
+        # self._on_timer_adapt_to_mixer_position()
 
     def _do_player_pause(self):
         pygame.mixer.music.pause()
@@ -346,10 +359,10 @@ class AudioFileTranscript(tkinter.Tk):
                                          length=500, resolution=1,
                                          showvalue=True, tickinterval=self.duration // 10,
                                          variable=self.player_slider_value,
-                                         command=self._on_update_player_position)
+                                         command=self._on_select_player_position)
         self.player_slider_scale.grid(row=1, column=0, columnspan=4, padx=10, pady=5)
 
-    def _on_update_player_position(self, event):
+    def _on_select_player_position(self, event):
         """
         what to do when sliding the cursor
         todo: select line in treeview
@@ -357,13 +370,17 @@ class AudioFileTranscript(tkinter.Tk):
         :return:
         """
         pos = self.player_slider_value.get()
-        self.current_timecode = pos * 1000
+        self.current_timecode_offset = pos * 1000
+        # for MP3 - https://stackoverflow.com/questions/73089784/problem-mixer-music-get-pos-after-set-position-by-mixer-music-set-pos
+        self.current_timecode = 0
+        print("_on_update_player_position (sec)", pos)
         self._set_mixer_player_position_only(pos)
         self._set_mixer_ui_position_only(pos)
+        # self._set_transcription_position(pos)
 
     def _set_mixer_ui_position_only(self, pos_sec: int):
-        self.current_timecode = pos_sec * 1000
         print("---_set_mixer_ui_position_only", pos_sec, pygame.mixer.music.get_pos())
+        self.current_timecode = pos_sec * 1000
         self.player_slider_value.set(pos_sec)
         self._set_transcription_position(pos_sec)
         # self.pause_status = False
@@ -371,22 +388,23 @@ class AudioFileTranscript(tkinter.Tk):
 
     def _set_mixer_player_position_only(self, pos_sec):
         self.current_timecode = pos_sec * 1000
+        # pygame.mixer.music.set_pos(self.current_timecode)
         self._do_player_unpause()
         self._do_player_pause()
         # Tk.update(self.frame)
 
     def _on_timer_adapt_to_mixer_position(self):
         if not self.pause_status:
-            self._set_mixer_ui_position_only(self.current_timecode / 1000)
+            self._set_mixer_ui_position_only((self.current_timecode_offset + self.current_timecode) / 1000)
             #
             print("pos update", pygame.mixer.music.get_busy())
-            print("_refresh_player_position pos", pygame.mixer.music.get_pos())
+            print("_refresh_player_position pos [in millisec]", pygame.mixer.music.get_pos())
             # if pygame.mixer.music.get_busy():
-            current_millisec = pygame.mixer.music.get_pos()  # .get_pos() returns integer in milliseconds
-            self.current_timecode = current_millisec
-            print('current = ', current_millisec, type(current_millisec))
-            self.player_slider_value.set(current_millisec / 1000)  # .set_pos() works in seconds
-            print('slider_value = ', self.player_slider_value.get(), type(self.player_slider_value.get()))
+            self.current_timecode = pygame.mixer.music.get_pos()  # .get_pos() returns integer in millisec
+            print('***** current ms = ', self.current_timecode_offset, self.current_timecode,
+                  self.current_timecode_offset + self.current_timecode )
+            # self.player_slider_value.set(self.current_timecode / 1000)  # .set_pos() works in seconds
+            # print('slider_value = ', self.player_slider_value.get())
             # # update treeview selection
             # self._set_transcription_position(current_millisec)
             self.refresh_player_position_job = self.frame.after(1000,
@@ -402,14 +420,14 @@ class AudioFileTranscript(tkinter.Tk):
         :return:
         """
         prev_sec = 0
-        chidren = self.transcription_tree.get_children()
-        prev_row_id = chidren[0]
-        for row_id in chidren:
+        children = self.transcription_tree.get_children()
+        prev_row_id = children[0]
+        for row_id in children:
             data = self.transcription_tree.item(row_id)['values']
             sec = chrono_to_time_code(data[0])
             # if self.debug:
             #     print(f"{prev_sec} < {pos / 1000} <= {sec}", prev_sec < pos <= sec)
-            if prev_sec < pos_sec <= sec:
+            if prev_sec <= pos_sec < sec:
                 # if prev_row_id:
                 #     self.transcription_tree.selection_set(prev_row_id)
                 # else:
