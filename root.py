@@ -4,7 +4,7 @@ from tkinter import Label, Menu, messagebox
 from tkinter.filedialog import askopenfilename
 
 from transcription.audiofile_transcript import AudioFileTranscript
-from transcription.live_transcript import LiveTranscript
+from capturing.live_transcript import LiveTranscript
 
 
 class RootWindow(tkinter.Tk):

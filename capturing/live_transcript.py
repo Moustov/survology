@@ -5,22 +5,30 @@ import sys
 import threading
 import time
 import tkinter
-import wave
 from datetime import datetime
-from tkinter import Text, Label, Button
-from tkinter.constants import NO, CENTER, W, END
-from tkinter.ttk import Progressbar, Treeview
-import soundfile
-import sounddevice as sd
-from vosk import Model, KaldiRecognizer
+from tkinter import Text, Label, Button, Frame
+from tkinter.constants import *
+from tkinter.ttk import Progressbar
 
+# https://python-sounddevice.readthedocs.io/en/0.4.5/examples.html
+import sounddevice as sd
+import soundfile as sf
+
+from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable
 
 # punctuation: https://github.com/benob/recasepunc
 # models : https://alphacephei.com/vosk/models
+from vosk import Model, KaldiRecognizer
 
 
 class LiveTranscript(tkinter.Tk):
     def __init__(self):
+        self.capturing = None
+        self.samplerate = None
+        self.whole_record = None
+        self.file_name = None
+        self.sentences = None
+        self.save_button = None
         self.title_label = None
         self.transcript_button = None
         self.transcription_text = None
@@ -29,29 +37,49 @@ class LiveTranscript(tkinter.Tk):
         self.queue = queue.Queue()
 
     def display(self, root: tkinter.Tk):
-        self.title_label = Label(root, text="Live Transcription")
+        self.frame = Frame(root)
+        self.frame.grid(row=1, column=0)
+        self.title_label = Label(self.frame, text="Live Transcription")
         self.title_label.pack()
-        self.listen_button = Button(root, text='Listen', command=self._do_listen)
+        self.listen_button = Button(self.frame, text='Listen', command=self._do_listen)
         self.listen_button.pack()
 
-        self.progress_bar = Progressbar(root, orient='horizontal', mode='indeterminate', length=280)
+        self.progress_bar = Progressbar(self.frame, orient='horizontal', mode='indeterminate', length=280)
         self.progress_bar.pack()
 
-        self.sentences = Treeview(root)
-        self.sentences['columns'] = ('Timecode', 'Text')
-        self.sentences.column("#0", width=0, stretch=NO)
-        self.sentences.column('Timecode', anchor=CENTER, width=60)
-        self.sentences.column('Text', anchor=W, width=380)
-
-        self.sentences.heading("#0", text="", anchor=CENTER)
-        self.sentences.heading('Timecode', text="Timecode", anchor=CENTER)
-        self.sentences.heading('Text', text="Text", anchor=CENTER)
+        col_ids = ('chrono', 'Text', 'tags')
+        col_titles = ('chrono', 'Text', 'tags')
+        self.sentences = mtkEditTable(self.frame, columns=col_ids,
+                                      column_titles=col_titles)
+        self.sentences.column('chrono', anchor=CENTER, width=30)
+        self.sentences.column('Text', anchor=W, width=120)
+        self.sentences.column('tags', anchor=CENTER, width=0, stretch=NO)
         # http://tkinter.fdex.eu/doc/event.html#events
         self.sentences.bind("<ButtonRelease-1>", self._on_sentence_select)
-        self.sentences.pack()
+        self.sentences.pack(fill=BOTH, expand=2)
 
-        self.transcription_text = Text(root, height=5)
+        self.transcription_text = Text(self.frame, height=5)
         self.transcription_text.pack()
+
+        self.save_button = Button(self.frame, text='Stop & Save transcription', command=self._do_save_transcription)
+        self.save_button.pack()
+
+    def _do_save_transcription(self):
+        self.capturing = False
+
+    def _save_transcription(self):
+        transcription = self.sentences.get_data()
+        if not self.file_name:
+            self.file_name = "audio samples/" + str(datetime.now())
+            self.file_name = self.file_name.replace(':', '-')
+        with open(self.file_name + ".json", "w", encoding='utf-8') as file:
+            json.dump(transcription, file, indent=4, ensure_ascii=False)
+        # save mp3
+        print("saving:", f"{self.file_name}.mp3", 'x', self.samplerate,
+                          1, sf.default_subtype("MP3"))
+        with sf.SoundFile(f"{self.file_name}.mp3", mode='x', samplerate=self.samplerate,
+                          channels=1, subtype=sf.default_subtype("MP3")) as file:
+            file.write(self.whole_record)
 
     def _on_sentence_select(self, event):
         item = self.sentences.item(self.sentences.selection())['values']
@@ -64,15 +92,16 @@ class LiveTranscript(tkinter.Tk):
 
     def _transcript(self):
         self.progress_bar.start()
-        self.start_transcription()
+        self._start_transcription_thread()
 
-    def callback(self, indata, frames, time, status):
+    def _mic_consumer_callback(self, indata, frames, time_i, status):
         """This is called (from a separate thread) for each audio block."""
         if status:
             print(status, file=sys.stderr)
         self.queue.put(bytes(indata))
 
-    def start_transcription(self):
+    def _start_transcription_thread(self):
+        timecode_sec = 0
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument(
             "-l", "--list-devices", action="store_true",
@@ -96,42 +125,44 @@ class LiveTranscript(tkinter.Tk):
         parser.add_argument(
             "-m", "--model", type=str, help="language model; e.g. en-us, fr, nl; default is en-us")
         args = parser.parse_args(remaining)
+        print(args)
+        print("sf.default_subtype('MP3')",sf.default_subtype("MP3"))
 
         try:
             if args.samplerate is None:
                 device_info = sd.query_devices(args.device, "input")
                 # soundfile expects an int, sounddevice provides a float:
-                args.samplerate = int(device_info["default_samplerate"])
-
+                self.samplerate = int(device_info["default_samplerate"])
+            else:
+                self.samplerate = args.samplerate
+            print(sd.query_devices(args.device, "input"))
             if args.model is None:
                 model = Model(lang="fr")
             else:
                 model = Model(lang=args.model)
-
-            dump_fn = open("../audio.wav", "wb")
-
-            whole_record = []
-            with sd.RawInputStream(samplerate=args.samplerate, blocksize=8000, device=args.device,
-                                   dtype="int16", channels=1, callback=self.callback):
+            self.whole_record = []
+            with sd.RawInputStream(samplerate=self.samplerate, blocksize=8000, device=args.device,
+                                   dtype="int16", channels=1, callback=self._mic_consumer_callback):
                 print("#" * 80)
                 print("Press Ctrl+C to stop the recording")
                 print("#" * 80)
-
-                rec = KaldiRecognizer(model, args.samplerate)
+                #
+                rec = KaldiRecognizer(model, self.samplerate)
                 formatted_timecode = ""
                 index = 0
                 start_time = datetime.now()
-
-                while True:
+                #
+                self.capturing = True
+                while self.capturing:
                     data = self.queue.get()
-                    whole_record += data
-
+                    self.whole_record += data
                     if rec.AcceptWaveform(data):
                         txt = json.loads(rec.Result())
                         if txt['text'] != "":
                             formatted_timecode = time.strftime("%H:%M:%S", time.gmtime(timecode_sec))
-                            self.sentences.insert(parent="", index='end', iid=index, text="",
-                                                  values=(str(formatted_timecode), txt['text']))
+                            row_id = self.sentences.insert(parent="", index='end', iid=index, text="",
+                                                           values=(str(formatted_timecode), txt['text']))
+                            self.sentences.selection_set(row_id)
                             index += 1
                     else:
                         partial = json.loads(rec.PartialResult())
@@ -139,15 +170,14 @@ class LiveTranscript(tkinter.Tk):
                             chrono = datetime.now()
                             timecode_sec = (chrono - start_time).seconds
                         print(formatted_timecode, partial)
-                    if dump_fn is not None:
-                        dump_fn.write(data)
-
+        #
         except KeyboardInterrupt:
             print("\nDone")
             parser.exit(0)
         except Exception as e:
             parser.exit(type(e).__name__ + ": " + str(e))
-        soundfile.write("conversation.wav", data)
+        self.progress_bar.stop()
+        self._save_transcription()
 
 
 def int_or_str(text):
