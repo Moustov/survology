@@ -1,3 +1,4 @@
+import numpy
 import argparse
 import json
 import queue
@@ -11,7 +12,8 @@ from tkinter.constants import *
 from tkinter.ttk import Progressbar
 
 # https://python-sounddevice.readthedocs.io/en/0.4.5/examples.html
-import numpy
+# https://gist.github.com/HudsonHuang/fbdf8e9af7993fe2a91620d3fb86a182
+# https://github.com/spatialaudio/python-sounddevice/issues/97
 import sounddevice as sd
 import soundfile as sf
 
@@ -25,6 +27,8 @@ from vosk import Model, KaldiRecognizer
 
 class LiveTranscript(tkinter.Tk):
     def __init__(self):
+        self.NUMBER_CHANNELS = 1
+        self.MIC_CHANNEL = 1  # sounddevice.query_devices() provides the ID for the microphone
         self.audio_file = None
         self.capturing = None
         self.samplerate = None
@@ -78,11 +82,12 @@ class LiveTranscript(tkinter.Tk):
         with open(self.file_name + ".json", "w", encoding='utf-8') as file:
             json.dump(transcription, file, indent=4, ensure_ascii=False)
         # save WAV
-        print("saving:", f"{self.file_name}.WAV", 'x', self.samplerate, 1, sf.default_subtype("WAV"))
+        print("saving:", f"{self.file_name}.WAV", 'x', self.samplerate, sf.default_subtype("WAV"))
         with sf.SoundFile(f"{self.file_name}.WAV", mode='x', samplerate=self.samplerate,
-                          channels=1, subtype=sf.default_subtype("WAV")) as file:
-            print(len(self.whole_record), min(self.whole_record), max(self.whole_record))
+                          channels=self.NUMBER_CHANNELS, subtype="PCM_16") as file:
+            # print(len(self.whole_record), self.whole_record[0:20])
             file.write(self.whole_record)
+        # todo transformer en MP3 ?
 
     def _on_sentence_select(self, event):
         item = self.sentences.item(self.sentences.selection())['values']
@@ -143,9 +148,9 @@ class LiveTranscript(tkinter.Tk):
                 model = Model(lang="fr")
             else:
                 model = Model(lang=args.model)
-            self.whole_record = numpy.array([])
+            self.whole_record = numpy.array([], numpy.int16)
             with sd.RawInputStream(samplerate=self.samplerate, blocksize=8000, device=args.device,
-                                   dtype="int16", channels=1, callback=self._mic_consumer_callback):
+                                   dtype="int16", channels=self.MIC_CHANNEL, callback=self._mic_consumer_callback):
                 print("#" * 80)
                 print("Press Ctrl+C to stop the recording")
                 print("#" * 80)
