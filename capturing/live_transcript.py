@@ -11,6 +11,7 @@ from tkinter.constants import *
 from tkinter.ttk import Progressbar
 
 # https://python-sounddevice.readthedocs.io/en/0.4.5/examples.html
+import numpy
 import sounddevice as sd
 import soundfile as sf
 
@@ -18,11 +19,13 @@ from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable
 
 # punctuation: https://github.com/benob/recasepunc
 # models : https://alphacephei.com/vosk/models
+from numpy import int16
 from vosk import Model, KaldiRecognizer
 
 
 class LiveTranscript(tkinter.Tk):
     def __init__(self):
+        self.audio_file = None
         self.capturing = None
         self.samplerate = None
         self.whole_record = None
@@ -61,10 +64,10 @@ class LiveTranscript(tkinter.Tk):
         self.transcription_text = Text(self.frame, height=5)
         self.transcription_text.pack()
 
-        self.save_button = Button(self.frame, text='Stop & Save transcription', command=self._do_save_transcription)
+        self.save_button = Button(self.frame, text='Stop & Save transcription', command=self._do_stop_transcription)
         self.save_button.pack()
 
-    def _do_save_transcription(self):
+    def _do_stop_transcription(self):
         self.capturing = False
 
     def _save_transcription(self):
@@ -74,11 +77,11 @@ class LiveTranscript(tkinter.Tk):
             self.file_name = self.file_name.replace(':', '-')
         with open(self.file_name + ".json", "w", encoding='utf-8') as file:
             json.dump(transcription, file, indent=4, ensure_ascii=False)
-        # save mp3
-        print("saving:", f"{self.file_name}.mp3", 'x', self.samplerate,
-                          1, sf.default_subtype("MP3"))
-        with sf.SoundFile(f"{self.file_name}.mp3", mode='x', samplerate=self.samplerate,
-                          channels=1, subtype=sf.default_subtype("MP3")) as file:
+        # save WAV
+        print("saving:", f"{self.file_name}.WAV", 'x', self.samplerate, 1, sf.default_subtype("WAV"))
+        with sf.SoundFile(f"{self.file_name}.WAV", mode='x', samplerate=self.samplerate,
+                          channels=1, subtype=sf.default_subtype("WAV")) as file:
+            print(len(self.whole_record), min(self.whole_record), max(self.whole_record))
             file.write(self.whole_record)
 
     def _on_sentence_select(self, event):
@@ -126,7 +129,7 @@ class LiveTranscript(tkinter.Tk):
             "-m", "--model", type=str, help="language model; e.g. en-us, fr, nl; default is en-us")
         args = parser.parse_args(remaining)
         print(args)
-        print("sf.default_subtype('MP3')",sf.default_subtype("MP3"))
+        print("sf.default_subtype('WAV')", sf.default_subtype("WAV"))
 
         try:
             if args.samplerate is None:
@@ -140,7 +143,7 @@ class LiveTranscript(tkinter.Tk):
                 model = Model(lang="fr")
             else:
                 model = Model(lang=args.model)
-            self.whole_record = []
+            self.whole_record = numpy.array([])
             with sd.RawInputStream(samplerate=self.samplerate, blocksize=8000, device=args.device,
                                    dtype="int16", channels=1, callback=self._mic_consumer_callback):
                 print("#" * 80)
@@ -155,7 +158,7 @@ class LiveTranscript(tkinter.Tk):
                 self.capturing = True
                 while self.capturing:
                     data = self.queue.get()
-                    self.whole_record += data
+                    self.whole_record = numpy.concatenate((self.whole_record, numpy.frombuffer(data, numpy.int16)))
                     if rec.AcceptWaveform(data):
                         txt = json.loads(rec.Result())
                         if txt['text'] != "":

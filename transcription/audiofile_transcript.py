@@ -190,6 +190,8 @@ class AudioFileTranscript(tkinter.Tk):
         time_limit = 2  # seconds
         while self.carry_on and self.start <= self.duration:
             # print("start", start)
+            # todo try the ffmpeg may be replaced with SoundFile: https://python-sounddevice.readthedocs.io/en/0.4.5/examples.html
+            # todo try import ffmpeg
             with subprocess.Popen(
                     [r"ffmpeg-master-latest-win64-gpl-shared\bin\ffmpeg", "-loglevel", "quiet",
                      "-t", str(time_limit),
