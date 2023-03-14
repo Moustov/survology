@@ -1,2 +1,5 @@
 /vosk/
 /ffmpeg-master-latest-win64-gpl-shared/
+/audio samples/
+/venv/
+/.idea/
