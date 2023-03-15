@@ -264,7 +264,18 @@ class AudioFileTranscript(tkinter.Tk):
         self.transcription_tree = self.transcription_content_widget.transcription_tree
         # http://tkinter.fdex.eu/doc/event.html#events
         # https://stackoverflow.com/questions/32289175/list-of-all-tkinter-events
-        self.transcription_tree.bind("<ButtonRelease-1>", self._on_select_transcription_row)
+        # self.transcription_tree.bind("<ButtonRelease-1>", self._on_select_transcription_row)
+        self.transcription_tree.menu.add_separator()
+        self.transcription_tree.menu.add_command(label="Set player", command=self.set_player)
+
+    def set_player(self):
+        selected_values = self.transcription_tree.item(self.transcription_tree.rowID)
+        values = selected_values.get("values")
+        print("set_player",values)
+        chrono = chrono_to_time_code(values[0])
+        self.current_timecode_offset = chrono * 1000
+        self._set_mixer_player_position_only(chrono)
+        self._set_mixer_ui_position_only(chrono)
 
     def _on_select_transcription_row(self, event):
         row_selected_thread = threading.Thread(target=partial(self._select_transcription_row, event),
@@ -281,12 +292,9 @@ class AudioFileTranscript(tkinter.Tk):
             self.current_timecode_offset = current_sec * 1000
             # for MP3 - https://stackoverflow.com/questions/73089784/problem-mixer-music-get-pos-after-set-position-by-mixer-music-set-pos
             self.current_timecode = 0
-
             print("_on_select_transcription_line current", current_sec, self.current_timecode_offset)
-            self._set_mixer_player_position_only(self.current_timecode_offset)
+            # self._set_mixer_player_position_only(self.current_timecode_offset)
             self.player_slider_value.set(current_sec)
-
-            self._set_mixer_player_position_only(current_sec)
             self._set_mixer_ui_position_only(current_sec)
             # self._set_transcription_position(pos)
 
@@ -379,6 +387,7 @@ class AudioFileTranscript(tkinter.Tk):
         # self._adapt_to_mixer_position()
 
     def _set_mixer_player_position_only(self, pos_sec):
+        print("---_set_mixer_player_position_only", pos_sec, pygame.mixer.music.get_pos())
         self.current_timecode = pos_sec * 1000
         # pygame.mixer.music.set_pos(self.current_timecode)
         self._do_player_unpause()
