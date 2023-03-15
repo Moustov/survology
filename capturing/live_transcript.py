@@ -175,7 +175,7 @@ class LiveTranscript(tkinter.Tk):
                             formatted_timecode = time.strftime("%H:%M:%S", time.gmtime(timecode_sec))
                             row_id = self.sentences.insert(parent="", index='end', iid=index, text="",
                                                            values=(str(formatted_timecode), txt['text']))
-                            self.sentences.set(0, 1.0)
+                            self.sentences.see(index)   # ensure new line is visible
                             self.sentences.selection_set(row_id)
                             index += 1
                     else:
