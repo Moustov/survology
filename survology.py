@@ -30,9 +30,7 @@ class SurvologyRootWindow(tkinter.Tk):
 
     def do_youtube_mp3_grabbing(self):
         d = DownloadMP3Youtube()
-        f = Frame()
-        f.grid(row=1, column=0)
-        d.display(f)
+        d.display(self, grid_row=1, grid_col=0)
 
     def _add_menu(self):
         """
@@ -59,7 +57,7 @@ class SurvologyRootWindow(tkinter.Tk):
 
     def do_live_transcription(self):
         transcript = LiveTranscript()
-        transcript.display(self)
+        transcript.display(self, grid_row=1, grid_col=0)
 
     def do_transcript_record(self):
         transcript = AudioFileTranscript()

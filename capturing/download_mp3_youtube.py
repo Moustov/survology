@@ -1,6 +1,6 @@
 import threading
 import tkinter
-from tkinter import Label, Entry, Button, END
+from tkinter import Label, Entry, Button, END, Frame
 from tkinter.ttk import Progressbar
 
 from moviepy.audio.io.AudioFileClip import AudioFileClip
@@ -18,15 +18,17 @@ class DownloadMP3Youtube(tkinter.Tk):
         self.search_button = None
         self.progress_bar = None
 
-    def display(self, root: tkinter.Tk):
-        self.url_label = Label(root, text="Youtube URL to download")
+    def display(self, root: tkinter.Tk, grid_row: int = 0, grid_col: int = 0):
+        self.frame = Frame(root)
+        self.frame.grid(row=grid_row, column=grid_col)
+        self.url_label = Label(self.frame, text="Youtube URL to download")
         self.url_label.pack()
-        self.youtube_url = Entry(root)
+        self.youtube_url = Entry(self.frame)
         self.youtube_url.pack()
-        self.search_button = Button(root, text='Search', command=self._do_download_mp3_from_url)
+        self.search_button = Button(self.frame, text='Search', command=self._do_download_mp3_from_url)
         self.search_button.pack()
 
-        self.progress_bar = Progressbar(root, orient='horizontal', mode='indeterminate', length=280)
+        self.progress_bar = Progressbar(self.frame, orient='horizontal', mode='indeterminate', length=280)
         self.progress_bar.pack()
 
     def _do_download_mp3_from_url(self):

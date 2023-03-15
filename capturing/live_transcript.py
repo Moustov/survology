@@ -18,17 +18,16 @@ from tkinter.ttk import Progressbar
 # https://github.com/spatialaudio/python-sounddevice/issues/97
 import sounddevice as sd
 import soundfile as sf
-
-from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable
-
 # punctuation: https://github.com/benob/recasepunc
 # models : https://alphacephei.com/vosk/models
-from numpy import int16
 from vosk import Model, KaldiRecognizer
+
+from widgets.transcription_treeview import TranscriptionTreeview
 
 
 class LiveTranscript(tkinter.Tk):
     def __init__(self):
+        self.transcription_content_widget = None
         self.horscrlbar = None
         self.verscrlbar = None
         self.transcription_content_labelframe = None
@@ -48,9 +47,9 @@ class LiveTranscript(tkinter.Tk):
         self.progress_bar = None
         self.queue = queue.Queue()
 
-    def display(self, root: tkinter.Tk):
+    def display(self, root: tkinter.Tk, grid_row: int = 0, grid_col: int = 0):
         self.frame = Frame(root)
-        self.frame.grid(row=1, column=0)
+        self.frame.grid(row=grid_row, column=grid_col)
         self.title_label = Label(self.frame, text="Live Transcription")
         self.title_label.pack()
         self.listen_button = Button(self.frame, text='Listen', command=self._do_listen)
@@ -68,31 +67,13 @@ class LiveTranscript(tkinter.Tk):
         self.save_button.pack()
 
     def display_transcription_frame(self):
-        self.transcription_content_labelframe = LabelFrame(self.frame, text='Transcription')
-        self.transcription_content_labelframe.pack(fill=BOTH, expand=1)
-        col_ids = ('chrono', 'Text', 'tags')
-        col_titles = ('chrono', 'Text', 'tags')
-        self.sentences = mtkEditTable(self.frame, columns=col_ids,
-                                      column_titles=col_titles)
-        self.sentences.column('chrono', anchor=CENTER, width=30)
-        self.sentences.column('Text', anchor=W, width=120)
-        self.sentences.column('tags', anchor=CENTER, width=0, stretch=NO)
+        self.transcription_content_widget = TranscriptionTreeview(self.frame)
+        self.transcription_content_labelframe = self.transcription_content_widget.get_transcription_frame_pack(fill=BOTH, expand=1)
+        self.sentences = self.transcription_content_widget.transcription_tree
         # http://tkinter.fdex.eu/doc/event.html#events
         # https://stackoverflow.com/questions/32289175/list-of-all-tkinter-events
         self.sentences.bind("<ButtonRelease-1>", self._on_sentence_select)
-        self.sentences.pack(fill=BOTH, expand=2)
-        self.sentences.pack(fill=BOTH, expand=1, side=LEFT)
-        #
-        self.verscrlbar = Scrollbar(self.transcription_content_labelframe,
-                                    orient="vertical",
-                                    command=self.transcription_tree.yview)
-        self.verscrlbar.pack()
-        self.horscrlbar = Scrollbar(self.frame,
-                                    orient="horizontal", width=20,
-                                    command=self.transcription_tree.xview)
-        self.horscrlbar.pack(fill=BOTH, expand=1, pady=5)
-        self.transcription_tree.configure(xscrollcommand=self.horscrlbar.set, yscrollcommand=self.verscrlbar.set)
-        #
+
     def _do_stop_transcription(self):
         self.capturing = False
 
@@ -110,7 +91,6 @@ class LiveTranscript(tkinter.Tk):
             file.write(self.whole_record)
         # transform into MP3
         data, fs = sf.read(f"{self.file_name}.WAV")
-        # Save as FLAC file at correct sampling rate
         sf.write(f"{self.file_name}.MP3", data, fs)
         os.remove(f"{self.file_name}.WAV")
 
