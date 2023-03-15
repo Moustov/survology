@@ -11,9 +11,9 @@ from capturing.live_transcript import LiveTranscript
 class SurvologyRootWindow(tkinter.Tk):
     def __init__(self):
         super().__init__()
-        self.search_chords = None
-        self.search_cadence = None
-        self.live_hearing = None
+        self.file_transcript = None
+        self.record_youtube = None
+        self.live_transcript = None
         self.menu_bar = None
         self.display()
 
@@ -29,8 +29,9 @@ class SurvologyRootWindow(tkinter.Tk):
         my_label.grid(row=0, column=0)
 
     def do_youtube_mp3_grabbing(self):
-        d = DownloadMP3Youtube()
-        d.display(self, grid_row=1, grid_col=0)
+        self.clear_root()
+        self.record_youtube = DownloadMP3Youtube()
+        self.record_youtube.display(self, grid_row=1, grid_col=0)
 
     def _add_menu(self):
         """
@@ -56,12 +57,14 @@ class SurvologyRootWindow(tkinter.Tk):
         self.config(menu=self.menu_bar)
 
     def do_live_transcription(self):
-        transcript = LiveTranscript()
-        transcript.display(self, grid_row=1, grid_col=0)
+        self.clear_root()
+        self.live_transcript = LiveTranscript()
+        self.live_transcript.display(self, grid_row=1, grid_col=0)
 
     def do_transcript_record(self):
-        transcript = AudioFileTranscript()
-        transcript.display(self, grid_row=1, grid_col=0)
+        self.clear_root()
+        self.file_transcript = AudioFileTranscript()
+        self.file_transcript.display(self, grid_row=1, grid_col=0)
 
     def do_about(self):
         messagebox.showinfo("Survology", f"(c) C. Moustier - 2023")
@@ -76,6 +79,14 @@ class SurvologyRootWindow(tkinter.Tk):
 
     def _add_toolbar(self):
         pass
+
+    def clear_root(self):
+        if self.file_transcript:
+            self.file_transcript.frame.grid_remove()
+        if self.record_youtube:
+            self.record_youtube.frame.grid_remove()
+        if self.live_transcript:
+            self.live_transcript.frame.grid_remove()
 
 
 if __name__ == "__main__":

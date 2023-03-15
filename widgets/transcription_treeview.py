@@ -34,7 +34,7 @@ class TranscriptionTreeview:
         col_ids = ('chrono', 'Text', 'tags')
         col_titles = ('chrono', 'Text', 'tags')
         self.local_frame = Frame(self.transcription_content_labelframe)
-        self.local_frame.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="nsew", ipadx=250, ipady=80)
+        self.local_frame.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="nsew", ipadx=250, ipady=40)
         self.transcription_tree = mtkEditTable(self.local_frame, columns=col_ids, column_titles=col_titles)
         self.transcription_tree.debug = True
         self.transcription_tree.column('chrono', anchor=CENTER, width=30)

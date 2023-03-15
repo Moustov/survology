@@ -17,6 +17,8 @@ from vosk import Model, KaldiRecognizer, SetLogLevel
 
 
 # https://stackoverflow.com/questions/73089784/problem-mixer-music-get-pos-after-set-position-by-mixer-music-set-pos
+from widgets.transcription_treeview import TranscriptionTreeview
+
 
 def time_code_to_chrono(timecode: float) -> str:
     h = int(timecode // 3600)
@@ -68,6 +70,7 @@ class AudioFileTranscript(tkinter.Tk):
 
     def __init__(self):
         # UI
+        self.transcription_content_widget = None
         self.horscrlbar = None
         self.transcription_file_text = None
         self.start_transcription_button = None
@@ -251,36 +254,12 @@ class AudioFileTranscript(tkinter.Tk):
         self.duration_label.grid(row=1, column=3)
 
     def display_transcription_frame(self):
-        self.transcription_content_labelframe = LabelFrame(self.frame, text='Transcription')
-        self.transcription_content_labelframe.pack(fill=BOTH, expand=1)
-        col_ids = ('chrono', 'Text', 'tags')
-        col_titles = ('chrono', 'Text', 'tags')
-        self.transcription_tree = mtkEditTable(self.transcription_content_labelframe, columns=col_ids,
-                                               column_titles=col_titles)
+        self.transcription_content_widget = TranscriptionTreeview(self.frame)
+        self.transcription_content_labelframe = self.transcription_content_widget.get_transcription_frame_pack(fill=BOTH, expand=1)
+        self.transcription_tree = self.transcription_content_widget.transcription_tree
+        # http://tkinter.fdex.eu/doc/event.html#events
         # https://stackoverflow.com/questions/32289175/list-of-all-tkinter-events
         self.transcription_tree.bind("<ButtonRelease-1>", self._on_select_transcription_row)
-        self.transcription_tree.debug = True
-        # self.transcription_tree['columns'] = ('chrono', 'Text', 'tags')
-        # self.transcription_tree.column("#0", width=0, stretch=NO)
-        self.transcription_tree.column('chrono', anchor=CENTER, width=30)
-        self.transcription_tree.column('Text', anchor=W, width=120)
-        self.transcription_tree.column('tags', anchor=CENTER, width=0, stretch=NO)
-        # self.transcription_tree.heading("#0", text="", anchor=CENTER)
-        # self.transcription_tree.heading('chrono', text="chrono", anchor=CENTER)
-        # self.transcription_tree.heading('Text', text="Text", anchor=W)
-        # self.transcription_tree.heading('tags', text="tags", anchor=CENTER)
-        self.transcription_tree.pack(fill=BOTH, expand=1, side=LEFT)
-        #
-        self.verscrlbar = Scrollbar(self.transcription_content_labelframe,
-                                    orient="vertical",
-                                    command=self.transcription_tree.yview)
-        self.verscrlbar.pack()
-        self.horscrlbar = Scrollbar(self.frame,
-                                    orient="horizontal", width=20,
-                                    command=self.transcription_tree.xview)
-        self.horscrlbar.pack(fill=BOTH, expand=1, pady=5)
-        self.transcription_tree.configure(xscrollcommand=self.horscrlbar.set, yscrollcommand=self.verscrlbar.set)
-        #
 
     def _on_select_transcription_row(self, event):
         tree = event.widget
