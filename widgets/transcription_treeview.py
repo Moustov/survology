@@ -1,4 +1,4 @@
-from tkinter import LabelFrame, Scrollbar, Frame
+from tkinter import LabelFrame, Scrollbar, Frame, Menu
 from tkinter.constants import *
 from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable
 
@@ -17,7 +17,7 @@ class TranscriptionTreeview:
         adds a transcription LabelFrame in a pack-like layout
         """
         self.transcription_content_labelframe = LabelFrame(self.frame, text='Transcription')
-        self.transcription_content_labelframe.pack(fill=fill, expand=expand)
+        self.transcription_content_labelframe.pack(fill=fill, expand=expand, padx=5, pady=5)
         self._add_content()
         return self.transcription_content_labelframe
 
@@ -38,9 +38,9 @@ class TranscriptionTreeview:
         self.transcription_tree = mtkEditTable(self.local_frame, columns=col_ids, column_titles=col_titles)
         self.transcription_tree.debug = True
         self.transcription_tree.column('chrono', anchor=CENTER, width=30)
-        self.transcription_tree.column('Text', anchor=W, width=120)
+        self.transcription_tree.column('Text', anchor=W, width=200)
         self.transcription_tree.column('tags', anchor=CENTER, width=0, stretch=NO)
-        self.transcription_tree.pack(fill=BOTH, expand=True)
+        self.transcription_tree.pack(fill=BOTH, expand=True, padx=5, pady=5)
         #
         self.verscrlbar = Scrollbar(self.transcription_content_labelframe,
                                     orient="vertical",
@@ -51,3 +51,4 @@ class TranscriptionTreeview:
                                     command=self.transcription_tree.xview)
         self.horscrlbar.grid(row=1, column=0, columnspan=2, sticky="ew")
         self.transcription_tree.configure(xscrollcommand=self.horscrlbar.set, yscrollcommand=self.verscrlbar.set)
+

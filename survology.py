@@ -19,7 +19,8 @@ class SurvologyRootWindow(tkinter.Tk):
 
     def display(self):
         self.title('Survology')
-        self.geometry('800x600')
+        self.geometry('1024x768')
+        # self.iconbitmap("resources/survology.ico")
         self._add_menu()
         self._add_toolbar()
         self._add_content()

@@ -51,20 +51,20 @@ class LiveTranscript(tkinter.Tk):
         self.frame = Frame(root)
         self.frame.grid(row=grid_row, column=grid_col)
         self.title_label = Label(self.frame, text="Live Transcription")
-        self.title_label.pack()
+        self.title_label.pack(padx=5, pady=5)
         self.listen_button = Button(self.frame, text='Listen', command=self._do_listen)
-        self.listen_button.pack()
+        self.listen_button.pack(padx=5, pady=5)
         #
         self.progress_bar = Progressbar(self.frame, orient='horizontal', mode='indeterminate', length=280)
-        self.progress_bar.pack()
+        self.progress_bar.pack(padx=5, pady=5)
         #
         self.display_transcription_frame()
         #
         self.transcription_text = Text(self.frame, height=5)
-        self.transcription_text.pack()
+        self.transcription_text.pack(padx=5, pady=5)
         #
         self.save_button = Button(self.frame, text='Stop & Save transcription', command=self._do_stop_transcription)
-        self.save_button.pack()
+        self.save_button.pack(padx=5, pady=5)
 
     def display_transcription_frame(self):
         self.transcription_content_widget = TranscriptionTreeview(self.frame)
@@ -175,6 +175,7 @@ class LiveTranscript(tkinter.Tk):
                             formatted_timecode = time.strftime("%H:%M:%S", time.gmtime(timecode_sec))
                             row_id = self.sentences.insert(parent="", index='end', iid=index, text="",
                                                            values=(str(formatted_timecode), txt['text']))
+                            self.sentences.set(0, 1.0)
                             self.sentences.selection_set(row_id)
                             index += 1
                     else:

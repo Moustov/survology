@@ -3,6 +3,7 @@ import os
 import subprocess
 import threading
 import tkinter
+from functools import partial
 from tkinter import Label, Button, Frame, Scrollbar, StringVar, LabelFrame, DoubleVar, Scale, Tk
 from tkinter.constants import *
 from tkinter.filedialog import askopenfilename
@@ -34,12 +35,15 @@ def chrono_to_time_code(hh_mm_ss: str) -> int:
     :return:
     """
     # print("chrono_to_time_code", hh_mm_ss)
-    parts = hh_mm_ss.split(":")
-    # print("parts", parts)
-    h = int(parts[0]) * 3600
-    m = int(parts[1]) * 60
-    s = int(parts[2])
-    return h + m + s
+    try:
+        parts = hh_mm_ss.split(":")
+        # print("parts", parts)
+        h = int(parts[0]) * 3600
+        m = int(parts[1]) * 60
+        s = int(parts[2])
+        return h + m + s
+    except Exception as e:
+        return -1
 
 
 def get_media_duration(file: str) -> float:
@@ -128,13 +132,13 @@ class AudioFileTranscript(tkinter.Tk):
         todo: play/pause audio file from a line
         """
         self.frame = Frame(root)
-        self.frame.grid(row=grid_row, column=grid_col, columnspan=5, sticky='nsew')
+        self.frame.grid(row=grid_row, column=grid_col, columnspan=5, sticky='nsew', padx=5, pady=5)
         self.display_audio_file_frame()
         self.display_transcription_controls_frame()
         self.display_transcription_frame()
         self.display_player_frame()
         self.save_button = Button(self.frame, text='Save transcription', command=self._do_save_transcription)
-        self.save_button.pack()
+        self.save_button.pack(padx=5, pady=5)
 
     def _do_transcription_resume(self):
         self.carry_on = True
@@ -227,41 +231,47 @@ class AudioFileTranscript(tkinter.Tk):
 
     def display_audio_file_frame(self):
         self.file_labelframe = LabelFrame(self.frame, text='File')
-        self.file_labelframe.pack(fill=BOTH, expand=1)
+        self.file_labelframe.pack(fill=BOTH, expand=1, padx=5, pady=5)
         self.title_label = Label(self.file_labelframe, text="Audio file")
-        self.title_label.grid(row=0, column=0)
+        self.title_label.grid(row=0, column=0, padx=5, pady=5)
         self.select_file_button = Button(self.file_labelframe, text='Select file', command=self._do_select_audio_file)
-        self.select_file_button.grid(row=0, column=1)
+        self.select_file_button.grid(row=0, column=1, padx=5, pady=5)
         self.audio_file_label = Label(self.file_labelframe, textvariable=self.audio_file_text)
-        self.audio_file_label.grid(row=0, column=2)
+        self.audio_file_label.grid(row=0, column=2, padx=5, pady=5)
 
     def display_transcription_controls_frame(self):
         self.progression_labelframe = LabelFrame(self.frame, text='Transcription controls')
-        self.progression_labelframe.pack(fill=BOTH, expand=1)
+        self.progression_labelframe.pack(fill=BOTH, expand=1, padx=5, pady=5)
         self.progress_bar = Progressbar(self.progression_labelframe, orient='horizontal', mode='determinate',
                                         length=280)
-        self.progress_bar.grid(row=0, column=0, columnspan=3)
+        self.progress_bar.grid(row=0, column=0, columnspan=3, padx=5, pady=5)
         self.start_transcription_button = Button(self.progression_labelframe, text='start',
                                                  command=self._do_transcription_start)
-        self.start_transcription_button.grid(row=1, column=0)
+        self.start_transcription_button.grid(row=1, column=0, padx=5, pady=5)
         self.freeze_transcription_button = Button(self.progression_labelframe, text='freeze',
                                                   command=self._do_transcription_freeze)
-        self.freeze_transcription_button.grid(row=1, column=1)
+        self.freeze_transcription_button.grid(row=1, column=1, padx=5, pady=5)
         self.resume_transcription_button = Button(self.progression_labelframe, text='resume',
                                                   command=self._do_transcription_resume)
-        self.resume_transcription_button.grid(row=1, column=2)
+        self.resume_transcription_button.grid(row=1, column=2, padx=5, pady=5)
         self.duration_label = Label(self.progression_labelframe, textvariable=self.duration_text)
-        self.duration_label.grid(row=1, column=3)
+        self.duration_label.grid(row=1, column=3,padx=5, pady=5)
 
     def display_transcription_frame(self):
         self.transcription_content_widget = TranscriptionTreeview(self.frame)
-        self.transcription_content_labelframe = self.transcription_content_widget.get_transcription_frame_pack(fill=BOTH, expand=1)
+        self.transcription_content_labelframe = self.transcription_content_widget.\
+            get_transcription_frame_pack(fill=BOTH, expand=1)
         self.transcription_tree = self.transcription_content_widget.transcription_tree
         # http://tkinter.fdex.eu/doc/event.html#events
         # https://stackoverflow.com/questions/32289175/list-of-all-tkinter-events
         self.transcription_tree.bind("<ButtonRelease-1>", self._on_select_transcription_row)
 
     def _on_select_transcription_row(self, event):
+        row_selected_thread = threading.Thread(target=partial(self._select_transcription_row, event),
+                                               name="row_selected_thread")
+        row_selected_thread.start()
+
+    def _select_transcription_row(self, event):
         tree = event.widget
         # selection = [tree.item(item)["text"] for item in tree.selection()]    # tree part
         row = [tree.item(item)["values"] for item in tree.selection()]
@@ -316,7 +326,7 @@ class AudioFileTranscript(tkinter.Tk):
 
     def display_player_frame(self):
         player_labelframe = LabelFrame(self.frame, text="Audio player")
-        player_labelframe.pack(fill=BOTH, expand=1)
+        player_labelframe.pack(fill=BOTH, expand=1, padx=5, pady=5)
         #
         # img = PhotoImage(file="img.png")
         # self.play_button = Button(root, image=img, borderwidth=0, command=self._do_play)
@@ -326,23 +336,23 @@ class AudioFileTranscript(tkinter.Tk):
         #
         # Inserting Play Button
         self.play_button = Button(player_labelframe, text="|>", command=self._do_player_play, width=10, height=1)
-        self.play_button.grid(row=0, column=0, padx=10, pady=5)
+        self.play_button.grid(row=0, column=0, padx=5, pady=5)
         # Inserting Pause Button
         self.pause_button = Button(player_labelframe, text="||", command=self._do_player_pause, width=8, height=1)
-        self.pause_button.grid(row=0, column=1, padx=10, pady=5)
+        self.pause_button.grid(row=0, column=1, padx=5, pady=5)
         # Inserting Unpause Button
         self.unpause_button = Button(player_labelframe, text="UNPAUSE", command=self._do_player_unpause, width=10, height=1)
-        self.unpause_button.grid(row=0, column=2, padx=10, pady=5)
+        self.unpause_button.grid(row=0, column=2, padx=5, pady=5)
         # Inserting Stop Button
         self.stop_button = Button(player_labelframe, text="STOP", command=self._do_player_stop, width=10, height=1)
-        self.stop_button.grid(row=0, column=3, padx=10, pady=5)
+        self.stop_button.grid(row=0, column=3, padx=5, pady=5)
         self.player_slider_value = DoubleVar()
         self.player_slider_scale = Scale(player_labelframe, to=self.duration if self.duration else 1, orient=HORIZONTAL,
                                          length=500, resolution=1,
                                          showvalue=True, tickinterval=self.duration // 10,
                                          variable=self.player_slider_value,
                                          command=self._on_select_player_position)
-        self.player_slider_scale.grid(row=1, column=0, columnspan=4, padx=10, pady=5)
+        self.player_slider_scale.grid(row=1, column=0, columnspan=4, padx=5, pady=5)
 
     def _on_select_player_position(self, event):
         """
