@@ -68,6 +68,7 @@ class AudioFileTranscript(tkinter.Tk):
 
     def __init__(self):
         # UI
+        self.horscrlbar = None
         self.transcription_file_text = None
         self.start_transcription_button = None
         self.player_slider_scale = None
@@ -273,12 +274,12 @@ class AudioFileTranscript(tkinter.Tk):
         self.verscrlbar = Scrollbar(self.transcription_content_labelframe,
                                     orient="vertical",
                                     command=self.transcription_tree.yview)
-        self.verscrlbar.pack(side=LEFT)
-        # self.horscrlbar = Scrollbar(self.frame,
-        #                             orient="horizontal", width=20,
-        #                             command=self.transcription_tree.xview)
-        # self.horscrlbar.grid(row=3, column=0, sticky='nsew', columnspan=2)
-        # self.transcription_tree.configure(xscrollcommand=self.horscrlbar.set)
+        self.verscrlbar.pack()
+        self.horscrlbar = Scrollbar(self.frame,
+                                    orient="horizontal", width=20,
+                                    command=self.transcription_tree.xview)
+        self.horscrlbar.pack(fill=BOTH, expand=1, pady=5)
+        self.transcription_tree.configure(xscrollcommand=self.horscrlbar.set, yscrollcommand=self.verscrlbar.set)
         #
 
     def _on_select_transcription_row(self, event):

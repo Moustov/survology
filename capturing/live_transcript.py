@@ -1,3 +1,5 @@
+import os
+
 import numpy
 import argparse
 import json
@@ -7,7 +9,7 @@ import threading
 import time
 import tkinter
 from datetime import datetime
-from tkinter import Text, Label, Button, Frame
+from tkinter import Text, Label, Button, Frame, LabelFrame, Scrollbar
 from tkinter.constants import *
 from tkinter.ttk import Progressbar
 
@@ -27,6 +29,9 @@ from vosk import Model, KaldiRecognizer
 
 class LiveTranscript(tkinter.Tk):
     def __init__(self):
+        self.horscrlbar = None
+        self.verscrlbar = None
+        self.transcription_content_labelframe = None
         self.NUMBER_CHANNELS = 1
         self.MIC_CHANNEL = 1  # sounddevice.query_devices() provides the ID for the microphone
         self.audio_file = None
@@ -50,10 +55,21 @@ class LiveTranscript(tkinter.Tk):
         self.title_label.pack()
         self.listen_button = Button(self.frame, text='Listen', command=self._do_listen)
         self.listen_button.pack()
-
+        #
         self.progress_bar = Progressbar(self.frame, orient='horizontal', mode='indeterminate', length=280)
         self.progress_bar.pack()
+        #
+        self.display_transcription_frame()
+        #
+        self.transcription_text = Text(self.frame, height=5)
+        self.transcription_text.pack()
+        #
+        self.save_button = Button(self.frame, text='Stop & Save transcription', command=self._do_stop_transcription)
+        self.save_button.pack()
 
+    def display_transcription_frame(self):
+        self.transcription_content_labelframe = LabelFrame(self.frame, text='Transcription')
+        self.transcription_content_labelframe.pack(fill=BOTH, expand=1)
         col_ids = ('chrono', 'Text', 'tags')
         col_titles = ('chrono', 'Text', 'tags')
         self.sentences = mtkEditTable(self.frame, columns=col_ids,
@@ -62,15 +78,21 @@ class LiveTranscript(tkinter.Tk):
         self.sentences.column('Text', anchor=W, width=120)
         self.sentences.column('tags', anchor=CENTER, width=0, stretch=NO)
         # http://tkinter.fdex.eu/doc/event.html#events
+        # https://stackoverflow.com/questions/32289175/list-of-all-tkinter-events
         self.sentences.bind("<ButtonRelease-1>", self._on_sentence_select)
         self.sentences.pack(fill=BOTH, expand=2)
-
-        self.transcription_text = Text(self.frame, height=5)
-        self.transcription_text.pack()
-
-        self.save_button = Button(self.frame, text='Stop & Save transcription', command=self._do_stop_transcription)
-        self.save_button.pack()
-
+        self.sentences.pack(fill=BOTH, expand=1, side=LEFT)
+        #
+        self.verscrlbar = Scrollbar(self.transcription_content_labelframe,
+                                    orient="vertical",
+                                    command=self.transcription_tree.yview)
+        self.verscrlbar.pack()
+        self.horscrlbar = Scrollbar(self.frame,
+                                    orient="horizontal", width=20,
+                                    command=self.transcription_tree.xview)
+        self.horscrlbar.pack(fill=BOTH, expand=1, pady=5)
+        self.transcription_tree.configure(xscrollcommand=self.horscrlbar.set, yscrollcommand=self.verscrlbar.set)
+        #
     def _do_stop_transcription(self):
         self.capturing = False
 
@@ -79,15 +101,18 @@ class LiveTranscript(tkinter.Tk):
         if not self.file_name:
             self.file_name = "audio samples/" + str(datetime.now())
             self.file_name = self.file_name.replace(':', '-')
-        with open(self.file_name + ".json", "w", encoding='utf-8') as file:
+        with open(self.file_name + ".MP3.json", "w", encoding='utf-8') as file:
             json.dump(transcription, file, indent=4, ensure_ascii=False)
         # save WAV
         print("saving:", f"{self.file_name}.WAV", 'x', self.samplerate, sf.default_subtype("WAV"))
         with sf.SoundFile(f"{self.file_name}.WAV", mode='x', samplerate=self.samplerate,
                           channels=self.NUMBER_CHANNELS, subtype="PCM_16") as file:
-            # print(len(self.whole_record), self.whole_record[0:20])
             file.write(self.whole_record)
-        # todo transformer en MP3 ?
+        # transform into MP3
+        data, fs = sf.read(f"{self.file_name}.WAV")
+        # Save as FLAC file at correct sampling rate
+        sf.write(f"{self.file_name}.MP3", data, fs)
+        os.remove(f"{self.file_name}.WAV")
 
     def _on_sentence_select(self, event):
         item = self.sentences.item(self.sentences.selection())['values']

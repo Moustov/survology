@@ -1,13 +1,14 @@
 import tkinter
-from tkinter import Label, Menu, messagebox
+from tkinter import Label, Menu, messagebox, Frame
 # https://www.youtube.com/watch?v=XhCfsuMyhXo&list=PLCC34OHNcOtoC6GglhF3ncJ5rLwQrLGnV&index=6
 from tkinter.filedialog import askopenfilename
 
+from download_mp3_youtube import DownloadMP3Youtube
 from transcription.audiofile_transcript import AudioFileTranscript
 from capturing.live_transcript import LiveTranscript
 
 
-class RootWindow(tkinter.Tk):
+class SurvologyRootWindow(tkinter.Tk):
     def __init__(self):
         super().__init__()
         self.search_chords = None
@@ -27,6 +28,12 @@ class RootWindow(tkinter.Tk):
         my_label = Label(self, text="Survology v0.1")
         my_label.grid(row=0, column=0)
 
+    def do_youtube_mp3_grabbing(self):
+        d = DownloadMP3Youtube()
+        f = Frame()
+        f.grid(row=1, column=0)
+        d.display(f)
+
     def _add_menu(self):
         """
         https://koor.fr/Python/Tutoriel_Tkinter/tkinter_menu.wp
@@ -35,9 +42,7 @@ class RootWindow(tkinter.Tk):
         self.menu_bar = Menu(self)
 
         menu_file = Menu(self.menu_bar, tearoff=0)
-        menu_file.add_command(label="New", command=self.do_something)
-        menu_file.add_command(label="Open", command=self.open_file)
-        menu_file.add_command(label="Save", command=self.do_something)
+        menu_file.add_command(label="Youtube -> MP3", command=self.do_youtube_mp3_grabbing)
         menu_file.add_separator()
         menu_file.add_command(label="Exit", command=self.quit)
         self.menu_bar.add_cascade(label="File", menu=menu_file)
@@ -76,5 +81,5 @@ class RootWindow(tkinter.Tk):
 
 
 if __name__ == "__main__":
-    app = RootWindow()
+    app = SurvologyRootWindow()
     app.mainloop()
