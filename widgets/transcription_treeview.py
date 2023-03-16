@@ -1,9 +1,9 @@
 from tkinter import LabelFrame, Scrollbar, Frame, Menu
 from tkinter.constants import *
-from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable
+from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable, mtkEditTableListener
 
 
-class TranscriptionTreeview:
+class TranscriptionTreeview(mtkEditTableListener):
     def __init__(self, frame: Frame):
         self.part_number = 0
         self.frame = frame
@@ -20,24 +20,47 @@ class TranscriptionTreeview:
         """
         self.transcription_content_labelframe = LabelFrame(self.frame, text='Transcription')
         self.transcription_content_labelframe.pack(fill=fill, expand=expand, padx=5, pady=5)
-        self._add_content()
+        self._add_ui_content()
         return self.transcription_content_labelframe
 
     def get_transcription_frame_grid(self, row_pos: int, col_pos:int) -> LabelFrame:
         """
-        adds a transcription LabelFrame in a pack-like layout
+        adds a transcription LabelFrame in a grid-like layout
         """
         self.transcription_content_labelframe = LabelFrame(self.frame, text='Transcription')
         self.transcription_content_labelframe.grid(row=row_pos, column=col_pos)
-        self._add_content()
+        self._add_ui_content()
         return self.transcription_content_labelframe
 
-    def _add_content(self):
+    def right_click_fired(self, event):
+        """
+        event triggered by self.transcription_tree when a right_click is done and the menu is not yet displayed
+        to update the menu
+        """
+        # adapt menu text to previous existing part
+        self.previous_part = ""
+        for i in self.transcription_tree.get_children():
+            print("i == self.transcription_tree.rowID", i, self.transcription_tree.rowID)
+            data = self.transcription_tree.item(i)['text']
+            if data:
+                self.previous_part = data
+            if i == self.transcription_tree.rowID:
+                break
+        self.transcription_tree.menu.entryconfig(6, label=f"Assign rows to part '{self.previous_part}'")
+        #
+        # disable "Assign rows to previous part" if not existing part
+        if self.previous_part:
+            self.transcription_tree.menu.entryconfig(6, state="normal")
+        else:
+            self.transcription_tree.menu.entryconfig(6, state="disabled")
+
+    def _add_ui_content(self):
         col_ids = ('chrono', 'Text', 'tags')
         col_titles = ('chrono', 'Text', 'tags')
         self.local_frame = Frame(self.transcription_content_labelframe)
         self.local_frame.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="nsew", ipadx=250, ipady=40)
         self.transcription_tree = mtkEditTable(self.local_frame, columns=col_ids, column_titles=col_titles)
+        self.transcription_tree.add_listener(self)
         self.transcription_tree.debug = True
         self.transcription_tree.column('chrono', anchor=CENTER, width=60, stretch=NO)
         self.transcription_tree.column('Text', anchor=W, width=200, minwidth=100)
@@ -56,15 +79,31 @@ class TranscriptionTreeview:
         self.transcription_tree.configure(xscrollcommand=self.horscrlbar.set, yscrollcommand=self.verscrlbar.set)
 
         self.transcription_tree.menu.add_separator()
-        self.transcription_tree.menu.add_command(label="Add tag", command=self.set_tag)
-        self.transcription_tree.menu.add_command(label="Assign all previous rows to previous tag",
-                                                 command=self.set_assign_to_tag)
+        self.transcription_tree.menu.add_command(label="Add part", command=self.set_tag)
+        self.transcription_tree.menu.add_command(label="Assign rows to previous part",
+                                                 command=self._do_assign_to_part)
 
-    def set_assign_to_tag(self):
+    def _do_assign_to_part(self):
+        """
+        move all row into the previous part
+        """
         # selected_row = self.transcription_tree.item(self.transcription_tree.rowID)
-        print("set_assign_to_tag", self.transcription_tree.rowID, self.previous_part )
-        for id in range(int(self.previous_part), int(self.transcription_tree.rowID), -1):
-            self.transcription_tree.move(id, self.previous_part, 0)
+        print("_do_assign_to_part", self.transcription_tree.rowID, self.previous_part)
+        is_inside = False
+        previous_part_id = None
+        pos_in_part = 0
+        for i in self.transcription_tree.get_children():
+            print("i", i, self.transcription_tree.rowID)
+            data = self.transcription_tree.item(i)['text']
+            if data and self.previous_part == data:
+                is_inside = True
+                previous_part_id = i
+            if is_inside and i != previous_part_id:
+                print("add sibling", i, previous_part_id, pos_in_part)
+                self.transcription_tree.move(i, previous_part_id, pos_in_part)
+                pos_in_part += 1
+            if i == self.transcription_tree.rowID:
+                break
 
     def set_tag(self):
         selected_values = self.transcription_tree.item(self.transcription_tree.rowID)
