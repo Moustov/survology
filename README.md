@@ -1,1 +1,2 @@
+todo: http://www.xavierdupre.fr/app/ensae_teaching_cs/helpsphinx/notebooks/td2a_eco_NLP_tf_idf_ngrams_LDA_word2vec_sur_des_extraits_litteraires.html
 todo: try conflicting vosk w/ google & others to highlight mistranscriptions

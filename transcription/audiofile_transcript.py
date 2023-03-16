@@ -154,7 +154,7 @@ class AudioFileTranscript(tkinter.Tk):
     def _do_transcription_freeze(self):
         self.carry_on = False
 
-    def _do_select_audio_file(self):
+    def _do_load_audio_file(self):
         self.file_to_transcript = askopenfilename(title="Choose the file to open",
                                                   filetypes=[("MP3", ".mp3"), ("WAV", ".wav"), ("All files", ".*")])
         self.audio_file_text.set("file: " + self.file_to_transcript)
@@ -166,7 +166,7 @@ class AudioFileTranscript(tkinter.Tk):
                 transcription = json.load(json_file)
                 if self.debug:
                     print("transcription file", transcription)
-                self.transcription_tree.set_data(transcription)
+                self.transcription_content_widget.set_data(transcription)
                 self.time_line = self.transcription_content_widget.get_timeline()
         else:
             if self.debug:
@@ -237,7 +237,7 @@ class AudioFileTranscript(tkinter.Tk):
         self.file_labelframe.pack(fill=BOTH, expand=1, padx=5, pady=5)
         self.title_label = Label(self.file_labelframe, text="Audio file")
         self.title_label.grid(row=0, column=0, padx=5, pady=5)
-        self.select_file_button = Button(self.file_labelframe, text='Select file', command=self._do_select_audio_file)
+        self.select_file_button = Button(self.file_labelframe, text='Select file', command=self._do_load_audio_file)
         self.select_file_button.grid(row=0, column=1, padx=5, pady=5)
         self.audio_file_label = Label(self.file_labelframe, textvariable=self.audio_file_text)
         self.audio_file_label.grid(row=0, column=2, padx=5, pady=5)

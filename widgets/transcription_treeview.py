@@ -1,6 +1,20 @@
+import random
 from tkinter import LabelFrame, Scrollbar, Frame, Menu
 from tkinter.constants import *
 from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable, mtkEditTableListener
+
+
+def random_color() -> str:
+    # forces soft colors (not dark & not too white)
+    color = "#" + ''.join([random.choice('ABCD') for j in range(6)])
+    return color
+
+
+def opposite_color(rgb: str) -> str:
+    rgb_int = int(rgb[1:], 16)
+    while_int = int("FFFFFF", 16)
+    opposite = while_int - rgb_int
+    return "#" + str(hex(opposite))[2:]
 
 
 class TranscriptionTreeview(mtkEditTableListener):
@@ -79,7 +93,7 @@ class TranscriptionTreeview(mtkEditTableListener):
         self.transcription_tree.configure(xscrollcommand=self.horscrlbar.set, yscrollcommand=self.verscrlbar.set)
 
         self.transcription_tree.menu.add_separator()
-        self.transcription_tree.menu.add_command(label="Add part", command=self.set_tag)
+        self.transcription_tree.menu.add_command(label="Add part", command=self.set_part)
         self.transcription_tree.menu.add_command(label="Assign rows to previous part",
                                                  command=self._do_assign_to_part)
 
@@ -93,14 +107,13 @@ class TranscriptionTreeview(mtkEditTableListener):
         previous_part_id = None
         pos_in_part = 0
         for i in self.transcription_tree.get_children():
-            print("i", i, self.transcription_tree.rowID)
             data = self.transcription_tree.item(i)['text']
             if data and self.previous_part == data:
                 is_inside = True
                 previous_part_id = i
             if is_inside and i != previous_part_id:
-                print("add sibling", i, previous_part_id, pos_in_part)
                 self.transcription_tree.move(i, previous_part_id, pos_in_part)
+                self.transcription_tree.item(i, tags=self.previous_part)
                 pos_in_part += 1
             if i == self.transcription_tree.rowID:
                 break
@@ -116,11 +129,26 @@ class TranscriptionTreeview(mtkEditTableListener):
                 res[key] = data[key]
         return res
 
-    def set_tag(self):
+    def set_part(self):
         selected_values = self.transcription_tree.item(self.transcription_tree.rowID)
         self.previous_part = self.transcription_tree.rowID
         values = selected_values.get("values")
         self.part_number += 1
-        print(self.part_number)
-        self.transcription_tree.item(self.transcription_tree.rowID, text=f"Part #{self.part_number}", values=values)
+        part_name = f"Part#{self.part_number}".replace(" ", "")
+        color = random_color()
+        print(part_name, color)
+        self.transcription_tree.tag_configure(part_name, background=color)
+        self.transcription_tree.item(self.transcription_tree.rowID, text=part_name, values=values, tags=part_name)
 
+    def set_data(self, transcription):
+        self.transcription_tree.set_data(transcription)
+        for i in self.transcription_tree.get_children():
+            print("===", i)
+            text = self.transcription_tree.item(i)['text'].replace(" ", "")
+            if text:
+                color = random_color()
+                print(text, color)
+                self.transcription_tree.tag_configure(text, background=color)
+                self.transcription_tree.item(i, tags=text)
+                for j in self.transcription_tree.get_children(i):
+                    self.transcription_tree.item(j, tags=text)
