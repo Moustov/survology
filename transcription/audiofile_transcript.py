@@ -74,6 +74,7 @@ class AudioFileTranscript(tkinter.Tk):
 
     def __init__(self):
         # UI
+        self.time_line = None
         self.transcription_content_widget = None
         self.horscrlbar = None
         self.transcription_file_text = None
@@ -166,6 +167,7 @@ class AudioFileTranscript(tkinter.Tk):
                 if self.debug:
                     print("transcription file", transcription)
                 self.transcription_tree.set_data(transcription)
+                self.time_line = self.transcription_content_widget.get_timeline()
         else:
             if self.debug:
                 print("No existing transcription found")
@@ -227,6 +229,7 @@ class AudioFileTranscript(tkinter.Tk):
                             print(self.timecode, partial)
                 self.start += time_limit
                 self.progress_bar['value'] += time_limit
+        self.time_line = self.transcription_content_widget.get_timeline()
         # self.progress_bar.stop()
 
     def display_audio_file_frame(self):
@@ -421,18 +424,13 @@ class AudioFileTranscript(tkinter.Tk):
         :return:
         """
         prev_sec = 0
-        children = self.transcription_tree.get_children()
-        prev_row_id = children[0]
-        for row_id in children:
-            data = self.transcription_tree.item(row_id)['values']
-            sec = chrono_to_time_code(data[0])
-            # if self.debug:
-            #     print(f"{prev_sec} < {pos / 1000} <= {sec}", prev_sec < pos <= sec)
+        prev_row_id = 0
+        for row_id in self.time_line.keys():
+            chrono = self.time_line[row_id][0]
+            sec = chrono_to_time_code(chrono)
             if prev_sec <= pos_sec < sec:
-                # if prev_row_id:
-                #     self.transcription_tree.selection_set(prev_row_id)
-                # else:
                 self.transcription_tree.selection_set(prev_row_id)
+                self.transcription_tree.see(prev_row_id)
                 break
             prev_sec = sec
             prev_row_id = row_id

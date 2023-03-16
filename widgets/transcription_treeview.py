@@ -105,6 +105,17 @@ class TranscriptionTreeview(mtkEditTableListener):
             if i == self.transcription_tree.rowID:
                 break
 
+    def get_timeline(self) -> dict:
+        data = self.transcription_tree.get_data()
+        res = {}
+        for key in data.keys():
+            if type(data[key]) is dict:
+                for child_key in data[key].keys():
+                    res[child_key] = data[key][child_key]
+            else:
+                res[key] = data[key]
+        return res
+
     def set_tag(self):
         selected_values = self.transcription_tree.item(self.transcription_tree.rowID)
         self.previous_part = self.transcription_tree.rowID
