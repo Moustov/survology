@@ -1,5 +1,5 @@
 import tkinter
-from tkinter import Label, Menu, messagebox, Frame
+from tkinter import Label, Menu, messagebox, Frame, Scrollbar
 # https://www.youtube.com/watch?v=XhCfsuMyhXo&list=PLCC34OHNcOtoC6GglhF3ncJ5rLwQrLGnV&index=6
 from tkinter.filedialog import askopenfilename
 
@@ -15,6 +15,9 @@ class SurvologyRootWindow(tkinter.Tk):
         self.record_youtube = None
         self.live_transcript = None
         self.menu_bar = None
+        # https://stackoverflow.com/questions/1844995/how-to-add-a-scrollbar-to-a-window-with-tkinter
+        self.horscrlbar = None
+        self.verscrlbar = None
         self.display()
 
     def display(self):

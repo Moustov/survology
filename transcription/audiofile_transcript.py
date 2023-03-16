@@ -18,6 +18,7 @@ from vosk import Model, KaldiRecognizer, SetLogLevel
 
 
 # https://stackoverflow.com/questions/73089784/problem-mixer-music-get-pos-after-set-position-by-mixer-music-set-pos
+from widgets.tagged_text_area import TaggedTextArea
 from widgets.transcription_treeview import TranscriptionTreeview
 
 
@@ -74,6 +75,8 @@ class AudioFileTranscript(tkinter.Tk):
 
     def __init__(self):
         # UI
+        self.labelable_labelframe = None
+        self.labelable_widget = None
         self.time_line = None
         self.transcription_content_widget = None
         self.horscrlbar = None
@@ -137,6 +140,7 @@ class AudioFileTranscript(tkinter.Tk):
         self.display_audio_file_frame()
         self.display_transcription_controls_frame()
         self.display_transcription_frame()
+        self.display_labelable_text_frame()
         self.display_player_frame()
         self.save_button = Button(self.frame, text='Save transcription', command=self._do_save_transcription)
         self.save_button.pack(padx=5, pady=5)
@@ -260,6 +264,10 @@ class AudioFileTranscript(tkinter.Tk):
         self.duration_label = Label(self.progression_labelframe, textvariable=self.duration_text)
         self.duration_label.grid(row=1, column=3,padx=5, pady=5)
 
+    def display_labelable_text_frame(self):
+        self.labelable_widget = TaggedTextArea(self.frame)
+        self.labelable_labelframe = self.labelable_widget.get_frame_pack(fill=BOTH, expand=1)
+
     def display_transcription_frame(self):
         self.transcription_content_widget = TranscriptionTreeview(self.frame)
         self.transcription_content_labelframe = self.transcription_content_widget.\
@@ -267,7 +275,7 @@ class AudioFileTranscript(tkinter.Tk):
         self.transcription_tree = self.transcription_content_widget.transcription_tree
         # http://tkinter.fdex.eu/doc/event.html#events
         # https://stackoverflow.com/questions/32289175/list-of-all-tkinter-events
-        # self.transcription_tree.bind("<ButtonRelease-1>", self._on_select_transcription_row)
+        self.transcription_tree.bind("<ButtonRelease-1>", self._on_select_transcription_row)
         self.transcription_tree.menu.add_separator()
         self.transcription_tree.menu.add_command(label="Set player", command=self.set_player)
 
@@ -299,6 +307,7 @@ class AudioFileTranscript(tkinter.Tk):
             # self._set_mixer_player_position_only(self.current_timecode_offset)
             self.player_slider_value.set(current_sec)
             self._set_mixer_ui_position_only(current_sec)
+            self.labelable_widget.set_text(row[0][1])
             # self._set_transcription_position(pos)
 
     def _do_player_play(self):

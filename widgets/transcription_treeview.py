@@ -1,20 +1,8 @@
-import random
-from tkinter import LabelFrame, Scrollbar, Frame, Menu
+from tkinter import LabelFrame, Scrollbar, Frame
 from tkinter.constants import *
 from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable, mtkEditTableListener
 
-
-def random_color() -> str:
-    # forces soft colors (not dark & not too white)
-    color = "#" + ''.join([random.choice('ABCD') for j in range(6)])
-    return color
-
-
-def opposite_color(rgb: str) -> str:
-    rgb_int = int(rgb[1:], 16)
-    while_int = int("FFFFFF", 16)
-    opposite = while_int - rgb_int
-    return "#" + str(hex(opposite))[2:]
+from widgets.color_utility import random_color
 
 
 class TranscriptionTreeview(mtkEditTableListener):
@@ -140,7 +128,10 @@ class TranscriptionTreeview(mtkEditTableListener):
         self.transcription_tree.tag_configure(part_name, background=color)
         self.transcription_tree.item(self.transcription_tree.rowID, text=part_name, values=values, tags=part_name)
 
-    def set_data(self, transcription):
+    def set_data(self, transcription: dict):
+        """
+        loads a json transcription into self.transcription_tree with colored parts
+        """
         self.transcription_tree.set_data(transcription)
         for i in self.transcription_tree.get_children():
             print("===", i)
