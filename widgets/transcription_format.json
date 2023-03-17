@@ -1,0 +1,60 @@
+{
+  "transcription": {
+    "Part#1": {
+      "0": [
+        "00:00:00",
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit,",
+        ""
+      ],
+      "1": [
+        "00:00:02",
+        "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+        ""
+      ],
+      "2": [
+        "00:00:04",
+        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+        ""
+      ]
+    },
+    "3": [
+      "00:00:10",
+      "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
+      ""
+    ]
+  },
+  "parts_colors": {
+    "Part#1": "#EBCDAA"
+  },
+  "transcription_labels": {
+    "1": [
+      {
+        "label": "here",
+        "beg": "1.0",
+        "end": "1.5"
+      },
+      {
+        "label": "there",
+        "beg": "1.6",
+        "end": "1.11"
+      }
+    ],
+    "2": [
+      {
+        "label": "here",
+        "beg": "1.4",
+        "end": "1.8"
+      }
+    ]
+  },
+  "labels": {
+    "here": {
+      "color": "#123456",
+      "description": "a description for the label 'here'"
+    },
+    "there": {
+      "color": "#654321",
+      "description": "a description for the label 'start'"
+    }
+  }
+}

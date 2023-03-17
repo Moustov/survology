@@ -1,3 +1,5 @@
+import json
+import os
 from tkinter import LabelFrame, Scrollbar, Frame
 from tkinter.constants import *
 from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable, mtkEditTableListener
@@ -12,26 +14,23 @@ class TranscriptionTreeview(mtkEditTableListener):
         self.horscrlbar = None
         self.verscrlbar = None
         self.transcription_tree = None
-        self.transcription_content_labelframe = None
+        self.transcription_content_labelframe = LabelFrame(self.frame, text='Transcription')
         self.local_frame = None
         self.previous_part = None
+        self._add_ui_content()
 
-    def get_transcription_frame_pack(self, fill=BOTH, expand=1) -> LabelFrame:
+    def get_frame_pack(self, fill=BOTH, expand=1) -> LabelFrame:
         """
         adds a transcription LabelFrame in a pack-like layout
         """
-        self.transcription_content_labelframe = LabelFrame(self.frame, text='Transcription')
         self.transcription_content_labelframe.pack(fill=fill, expand=expand, padx=5, pady=5)
-        self._add_ui_content()
         return self.transcription_content_labelframe
 
-    def get_transcription_frame_grid(self, row_pos: int, col_pos:int) -> LabelFrame:
+    def get_frame_grid(self, row_pos: int, col_pos: int) -> LabelFrame:
         """
         adds a transcription LabelFrame in a grid-like layout
         """
-        self.transcription_content_labelframe = LabelFrame(self.frame, text='Transcription')
-        self.transcription_content_labelframe.grid(row=row_pos, column=col_pos)
-        self._add_ui_content()
+        self.transcription_content_labelframe.grid(row=row_pos, column=col_pos, padx=5, pady=5)
         return self.transcription_content_labelframe
 
     def right_click_fired(self, event):
@@ -57,10 +56,10 @@ class TranscriptionTreeview(mtkEditTableListener):
             self.transcription_tree.menu.entryconfig(6, state="disabled")
 
     def _add_ui_content(self):
-        col_ids = ('chrono', 'Text', 'tags')
-        col_titles = ('chrono', 'Text', 'tags')
         self.local_frame = Frame(self.transcription_content_labelframe)
         self.local_frame.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="nsew", ipadx=250, ipady=40)
+        col_ids = ('chrono', 'Text', 'tags')
+        col_titles = ('chrono', 'Text', 'tags')
         self.transcription_tree = mtkEditTable(self.local_frame, columns=col_ids, column_titles=col_titles)
         self.transcription_tree.add_listener(self)
         self.transcription_tree.debug = True
@@ -128,11 +127,30 @@ class TranscriptionTreeview(mtkEditTableListener):
         self.transcription_tree.tag_configure(part_name, background=color)
         self.transcription_tree.item(self.transcription_tree.rowID, text=part_name, values=values, tags=part_name)
 
+    def save_json(self, file: str):
+        transcription = self.transcription_tree.get_data()
+        parts_colors = self.get_parts_colors()
+        transcription_labels = self.get_transcription_labels()
+        labels = self.get_labels()
+        transcription = {"transcription": transcription, "parts_colors": parts_colors,
+                         "transcription_labels": transcription_labels, "labels": labels}
+        with open(file, "w", encoding='utf-8') as file:
+            json.dump(transcription, file, indent=4, ensure_ascii=False)
+
+    def load_json(self, file: str):
+        """
+        loads a transcription formatted json
+        """
+        if os.path.exists(file):
+            with open(file, "r", encoding='utf-8') as json_file:
+                transcription = json.load(json_file)
+                self.set_data(transcription)
+
     def set_data(self, transcription: dict):
         """
         loads a json transcription into self.transcription_tree with colored parts
         """
-        self.transcription_tree.set_data(transcription)
+        self.transcription_tree.set_data(transcription["transcription"])
         for i in self.transcription_tree.get_children():
             print("===", i)
             text = self.transcription_tree.item(i)['text'].replace(" ", "")
@@ -143,3 +161,12 @@ class TranscriptionTreeview(mtkEditTableListener):
                 self.transcription_tree.item(i, tags=text)
                 for j in self.transcription_tree.get_children(i):
                     self.transcription_tree.item(j, tags=text)
+
+    def get_parts_colors(self) -> dict:
+        return {}
+
+    def get_transcription_labels(self) -> dict:
+        return {}
+
+    def get_labels(self) -> dict:
+        return {}

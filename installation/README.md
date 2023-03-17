@@ -5,3 +5,4 @@ todo:
 * install vosk dictionnaries in ./vosk
 * select "audio samples" location & create dir
 * install ffmpeg (adapt to platform)
+

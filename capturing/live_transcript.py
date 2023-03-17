@@ -68,7 +68,7 @@ class LiveTranscript(tkinter.Tk):
 
     def display_transcription_frame(self):
         self.transcription_content_widget = TranscriptionTreeview(self.frame)
-        self.transcription_content_labelframe = self.transcription_content_widget.get_transcription_frame_pack(fill=BOTH, expand=1)
+        self.transcription_content_labelframe = self.transcription_content_widget.get_frame_pack(fill=BOTH, expand=1)
         self.sentences = self.transcription_content_widget.transcription_tree
         # http://tkinter.fdex.eu/doc/event.html#events
         # https://stackoverflow.com/questions/32289175/list-of-all-tkinter-events

@@ -4,7 +4,7 @@ import subprocess
 import threading
 import tkinter
 from functools import partial
-from tkinter import Label, Button, Frame, Scrollbar, StringVar, LabelFrame, DoubleVar, Scale, Tk
+from tkinter import Label, Button, Frame, StringVar, LabelFrame, DoubleVar, Scale, Tk
 from tkinter.constants import *
 from tkinter.filedialog import askopenfilename
 from tkinter.ttk import Progressbar
@@ -18,7 +18,8 @@ from vosk import Model, KaldiRecognizer, SetLogLevel
 
 
 # https://stackoverflow.com/questions/73089784/problem-mixer-music-get-pos-after-set-position-by-mixer-music-set-pos
-from widgets.tagged_text_area import TaggedTextArea
+from widgets.labelable_text_area import LabelableTextArea
+from widgets.labelable_text_area_listener import LabelableTextAreaListener
 from widgets.transcription_treeview import TranscriptionTreeview
 
 
@@ -67,7 +68,7 @@ def get_media_duration(file: str) -> float:
             return res
 
 
-class AudioFileTranscript(tkinter.Tk):
+class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
     PROGRESS_BAR_ROW_POSTION = 2
     model = Model(lang="fr")
     SAMPLE_RATE = 16000
@@ -75,6 +76,7 @@ class AudioFileTranscript(tkinter.Tk):
 
     def __init__(self):
         # UI
+        self.labels = None
         self.labelable_labelframe = None
         self.labelable_widget = None
         self.time_line = None
@@ -96,6 +98,7 @@ class AudioFileTranscript(tkinter.Tk):
         self.duration_text = StringVar(value="duration unknown")
         self.duration_label = None
         self.transcription_frame = None
+        self.labelable_content_labelframe = None
         self.verscrlbar = None
         self.title_label = None
         self.transcript_button = None
@@ -151,9 +154,7 @@ class AudioFileTranscript(tkinter.Tk):
         listen_thread.start()
 
     def _do_save_transcription(self):
-        transcription = self.transcription_tree.get_data()
-        with open(f"{self.file_to_transcript}.json", "w", encoding='utf-8') as file:
-            json.dump(transcription, file, indent=4, ensure_ascii=False)
+        self.transcription_content_widget.save_json(f"{self.file_to_transcript}.json")
 
     def _do_transcription_freeze(self):
         self.carry_on = False
@@ -166,12 +167,8 @@ class AudioFileTranscript(tkinter.Tk):
         if self.debug:
             print(self.transcription_file_text)
         if os.path.exists(self.transcription_file_text):
-            with open(self.transcription_file_text, "r", encoding='utf-8') as json_file:
-                transcription = json.load(json_file)
-                if self.debug:
-                    print("transcription file", transcription)
-                self.transcription_content_widget.set_data(transcription)
-                self.time_line = self.transcription_content_widget.get_timeline()
+            self.transcription_content_widget.load_json(self.transcription_file_text)
+            self.time_line = self.transcription_content_widget.get_timeline()
         else:
             if self.debug:
                 print("No existing transcription found")
@@ -265,21 +262,43 @@ class AudioFileTranscript(tkinter.Tk):
         self.duration_label.grid(row=1, column=3,padx=5, pady=5)
 
     def display_labelable_text_frame(self):
-        self.labelable_widget = TaggedTextArea(self.frame)
-        self.labelable_labelframe = self.labelable_widget.get_frame_pack(fill=BOTH, expand=1)
+        self.labelable_widget = LabelableTextArea(self.frame, self)
+        self.labelable_content_labelframe = self.labelable_widget.get_frame_pack(fill=BOTH, expand=1)
 
     def display_transcription_frame(self):
         self.transcription_content_widget = TranscriptionTreeview(self.frame)
-        self.transcription_content_labelframe = self.transcription_content_widget.\
-            get_transcription_frame_pack(fill=BOTH, expand=1)
+        self.transcription_content_labelframe = self.transcription_content_widget.get_frame_pack(fill=BOTH, expand=1)
         self.transcription_tree = self.transcription_content_widget.transcription_tree
         # http://tkinter.fdex.eu/doc/event.html#events
         # https://stackoverflow.com/questions/32289175/list-of-all-tkinter-events
         self.transcription_tree.bind("<ButtonRelease-1>", self._on_select_transcription_row)
         self.transcription_tree.menu.add_separator()
-        self.transcription_tree.menu.add_command(label="Set player", command=self.set_player)
+        self.transcription_tree.menu.add_command(label="Set player", command=self.set_player_from_current_tree_row)
 
-    def set_player(self):
+    def set_new_text(self, text: str):
+        """
+        set the new edited text
+        """
+        print("set_new_text", self.transcription_tree.rowID)
+        values = self.transcription_tree.item(self.transcription_tree.rowID)['values']
+        print("------------", values)
+        values[1] = text
+        print("------------", values)
+        self.transcription_tree.item(self.transcription_tree.rowID, values=values)
+
+    def set_labels(self, labels: dict):
+        """
+        set the new labels
+        """
+        self.labels = labels
+
+    def set_transcription_labels(self, transcription_labels: dict):
+        """
+        set the new label positions in the text
+        """
+        self.transcription_labels = transcription_labels
+
+    def set_player_from_current_tree_row(self):
         selected_values = self.transcription_tree.item(self.transcription_tree.rowID)
         values = selected_values.get("values")
         print("set_player",values)
@@ -297,8 +316,9 @@ class AudioFileTranscript(tkinter.Tk):
         tree = event.widget
         # selection = [tree.item(item)["text"] for item in tree.selection()]    # tree part
         row = [tree.item(item)["values"] for item in tree.selection()]
-        print("selected items:", row)
+        print(">>>>>>>>>>>>selected items:", row, tree)
         if row:
+            self.transcription_tree.rowID = tree.selection()
             current_sec = chrono_to_time_code(row[0][0])
             self.current_timecode_offset = current_sec * 1000
             # for MP3 - https://stackoverflow.com/questions/73089784/problem-mixer-music-get-pos-after-set-position-by-mixer-music-set-pos
@@ -416,13 +436,8 @@ class AudioFileTranscript(tkinter.Tk):
             self.current_timecode = pygame.mixer.music.get_pos()  # .get_pos() returns integer in millisec
             print('***** current ms = ', self.current_timecode_offset, self.current_timecode,
                   self.current_timecode_offset + self.current_timecode )
-            # self.player_slider_value.set(self.current_timecode / 1000)  # .set_pos() works in seconds
-            # print('slider_value = ', self.player_slider_value.get())
-            # # update treeview selection
-            # self._set_transcription_position(current_millisec)
             self.refresh_player_position_job = self.frame.after(1000,
                                                                 lambda: self._on_timer_adapt_to_mixer_position())  # Loop every sec
-            # self.player_slider_scale.set(self.player_slider_value.get())
 
     def _set_transcription_position(self, pos_sec: int):
         """
