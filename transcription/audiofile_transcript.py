@@ -153,7 +153,8 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
     def save_json(self):
         transcription = self.transcription_content_widget.get_data()
         file = f"{self.file_to_transcript}.json"
-        transcription_content = {"transcription": transcription, "parts_colors": self.parts_colors,
+        transcription_content = {"transcription": transcription,
+                                 "parts_colors": self.parts_colors,
                                  "transcription_labels": self.transcription_labels, "labels": self.labels}
         print("save", transcription_content)
         with open(file, "w", encoding='utf-8') as file:
@@ -357,9 +358,10 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
             self._set_mixer_ui_position_only(current_sec)
             print("self.transcription_labels", "'", self.transcription_tree.rowID, "'", self.transcription_labels)
             if self.transcription_tree.rowID in self.transcription_labels.keys():
-                self.labelable_widget.set_text(row[0][1], self.transcription_labels[self.transcription_tree.rowID])
+                self.labelable_widget.set_text(row[0][1], self.transcription_labels[self.transcription_tree.rowID],
+                                               self.labels)
             else:
-                self.labelable_widget.set_text(row[0][1], {})
+                self.labelable_widget.set_text(row[0][1], {}, self.labels)
             # self._set_transcription_position(pos)
 
     def _do_player_play(self):
@@ -406,9 +408,9 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         # # self.play_button.grid(row=3, column=0, padx=10)
         # self.play_button.pack()
         #
-        # Inserting Play Button
-        self.play_button = Button(player_labelframe, text="|>", command=self._do_player_play, width=10, height=1)
-        self.play_button.grid(row=0, column=0, padx=5, pady=5)
+        # # Inserting Play Button
+        # self.play_button = Button(player_labelframe, text="|>", command=self._do_player_play, width=10, height=1)
+        # self.play_button.grid(row=0, column=0, padx=5, pady=5)
         # Inserting Pause Button
         self.pause_button = Button(player_labelframe, text="||", command=self._do_player_pause, width=8, height=1)
         self.pause_button.grid(row=0, column=1, padx=5, pady=5)
@@ -416,9 +418,9 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.unpause_button = Button(player_labelframe, text="UNPAUSE", command=self._do_player_unpause, width=10,
                                      height=1)
         self.unpause_button.grid(row=0, column=2, padx=5, pady=5)
-        # Inserting Stop Button
-        self.stop_button = Button(player_labelframe, text="STOP", command=self._do_player_stop, width=10, height=1)
-        self.stop_button.grid(row=0, column=3, padx=5, pady=5)
+        # # Inserting Stop Button
+        # self.stop_button = Button(player_labelframe, text="STOP", command=self._do_player_stop, width=10, height=1)
+        # self.stop_button.grid(row=0, column=3, padx=5, pady=5)
 
         self.player_slider_scale = Scale(player_labelframe, to=self.duration if self.duration else 1, orient=HORIZONTAL,
                                          length=500, resolution=1,

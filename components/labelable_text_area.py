@@ -2,6 +2,8 @@
 from tkinter import Frame, Text, LabelFrame, Menu, Button
 from tkinter.constants import *
 
+from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable
+
 from components.color_utility import random_color
 from components.labelable_text_area_listener import LabelableTextAreaListener
 
@@ -83,8 +85,12 @@ class LabelableTextArea:
         self.text.tag_config("here", background=self.get_tag_color("here"))
         #
         self.validate_text_button = Button(self.local_frame, text='Update', command=self._do_update_text_in_treeview)
-        self.validate_text_button.grid(row=0, column=1)
+        self.validate_text_button.grid(row=0, column=1, padx=5, pady=5)
         #
+        col_ids = ('label', 'description', 'color')
+        col_titles = ('label', 'description', 'color')
+        self.labels_etv = mtkEditTable(self.local_frame, columns=col_ids, column_titles=col_titles)
+        self.labels_etv.grid(row=0, column=2, padx=5, pady=5, sticky="ew", ipadx=100)
         # right click menu - https://tkdocs.com/tutorial/menus.html
         self.menu = Menu(self.frame, tearoff=0)
         self.menu.add_command(label="Assign tag", command=self.add_label_in_text)
@@ -102,7 +108,10 @@ class LabelableTextArea:
         self.tags[new_color]["color"] = new_color
         self.tags[new_color]["description"]: f"a description for the label '{new_color}'"
 
-    def set_text(self, text: str, labeled_text: dict):
+    def set_text(self, text: str, labeled_text: dict, labels: dict):
+        """
+        labeled_text: see (components/transcription_format.json)[components/transcription_format.json]["transcription_labels"]
+        """
         # remove all previous tags in Text content
         for tag in self.text.tag_names():
             self.text.tag_remove(tag, "1.0", "end")
@@ -111,11 +120,26 @@ class LabelableTextArea:
         # set to new text
         self.text.insert(END, text)
         # set tags
+        self.set_label_list(labeled_text, labels)
         for beg_key in labeled_text.keys():
             print("set_text", labeled_text[beg_key])
             self.text.tag_add(labeled_text[beg_key]["label"], beg_key, labeled_text[beg_key]["end"])
             self.tags_in_text[beg_key] = {"label": labeled_text[beg_key]["label"], "end": labeled_text[beg_key]["end"],
                                           "text": labeled_text[beg_key]["text"]}
+
+    def set_label_list(self, labeled_text: dict, labels: dict):
+        """
+        labeled_text: see (components/transcription_format.json)[components/transcription_format.json]["transcription_labels"]
+        labels: see (components/transcription_format.json)[components/transcription_format.json]["labels"]
+        """
+        res_labels = {}
+        for i in labeled_text.keys():
+            print("set_text", i, labeled_text)
+            res_labels[i] = [labeled_text[i]["label"],
+                             labels[labeled_text[i]["label"]]["description"],
+                             labels[labeled_text[i]["label"]]["color"]]
+        print("labels", labels, res_labels)
+        self.labels_etv.set_data(res_labels)
 
     def _on_right_click(self, event):
         print(event)

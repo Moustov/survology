@@ -22,10 +22,12 @@ import soundfile as sf
 # models : https://alphacephei.com/vosk/models
 from vosk import Model, KaldiRecognizer
 
+from components.labelable_text_area import LabelableTextArea
+from components.labelable_text_area_listener import LabelableTextAreaListener
 from components.transcription_treeview import TranscriptionTreeview
 
 
-class LiveTranscript(tkinter.Tk):
+class LiveTranscript(tkinter.Tk, LabelableTextAreaListener):
     def __init__(self):
         self.transcription_content_widget = None
         self.horscrlbar = None
@@ -60,8 +62,8 @@ class LiveTranscript(tkinter.Tk):
         #
         self.display_transcription_frame()
         #
-        self.transcription_text = Text(self.frame, height=5)
-        self.transcription_text.pack(padx=5, pady=5)
+        self.labelable_widget = LabelableTextArea(self.frame, self)
+        self.labelable_content_labelframe = self.labelable_widget.get_frame_pack(fill=BOTH, expand=1)
         #
         self.save_button = Button(self.frame, text='Stop & Save transcription', command=self._do_stop_transcription)
         self.save_button.pack(padx=5, pady=5)
