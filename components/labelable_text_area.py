@@ -2,8 +2,8 @@
 from tkinter import Frame, Text, LabelFrame, Menu, Button
 from tkinter.constants import *
 
-from widgets.color_utility import random_color
-from widgets.labelable_text_area_listener import LabelableTextAreaListener
+from components.color_utility import random_color
+from components.labelable_text_area_listener import LabelableTextAreaListener
 
 
 class LabelableTextArea:

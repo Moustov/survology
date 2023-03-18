@@ -16,9 +16,9 @@ from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable
 from vosk import Model, KaldiRecognizer, SetLogLevel
 
 # https://stackoverflow.com/questions/73089784/problem-mixer-music-get-pos-after-set-position-by-mixer-music-set-pos
-from widgets.labelable_text_area import LabelableTextArea
-from widgets.labelable_text_area_listener import LabelableTextAreaListener
-from widgets.transcription_treeview import TranscriptionTreeview
+from components.labelable_text_area import LabelableTextArea
+from components.labelable_text_area_listener import LabelableTextAreaListener
+from components.transcription_treeview import TranscriptionTreeview
 
 
 def time_code_to_chrono(timecode: float) -> str:
@@ -165,18 +165,19 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         """
         if os.path.exists(file):
             with open(file, "r", encoding='utf-8') as json_file:
-                transcription = json.load(json_file)
-                self.transcription_content_widget.set_data(transcription)
-                self.parts_colors = transcription["parts_colors"]
-                self.transcription_labels = transcription["transcription_labels"]
-                self.labels = transcription["labels"]
-                for row_key in self.transcription_labels.keys():
-                    values = self.transcription_tree.item(row_key)['values']
-                    tags = []
-                    for pos_key in self.transcription_labels[row_key].keys():
-                        tags.append(self.transcription_labels[row_key][pos_key]['label'])
-                    values[2] = "; ".join(list(dict.fromkeys(tags)))    # add unique labels
-                    self.transcription_tree.item(row_key, values=values)
+                transcription_file_content_json = json.load(json_file)
+                self.transcription_content_widget.set_data(transcription_file_content_json)
+                self.parts_colors = transcription_file_content_json["parts_colors"]
+                self.transcription_labels = transcription_file_content_json["transcription_labels"]
+                if "labels" in transcription_file_content_json.keys():
+                    self.labels = transcription_file_content_json["labels"]
+                    for row_key in self.transcription_labels.keys():
+                        values = self.transcription_tree.item(row_key)['values']
+                        tags = []
+                        for pos_key in self.transcription_labels[row_key].keys():
+                            tags.append(self.transcription_labels[row_key][pos_key]['label'])
+                        values[2] = "; ".join(list(dict.fromkeys(tags)))    # add unique labels
+                        self.transcription_tree.item(row_key, values=values)
 
     def _do_transcription_freeze(self):
         self.carry_on = False
@@ -472,6 +473,9 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         """
         prev_sec = 0
         prev_row_id = 0
+        if not self.time_line:
+            self.time_line = self.transcription_content_widget.get_timeline()
+        print("_set_transcription_position", "self.time_line", self.time_line)
         for row_id in self.time_line.keys():
             chrono = self.time_line[row_id][0]
             sec = chrono_to_time_code(chrono)

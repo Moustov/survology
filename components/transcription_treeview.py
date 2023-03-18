@@ -4,7 +4,7 @@ from tkinter import LabelFrame, Scrollbar, Frame
 from tkinter.constants import *
 from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable, mtkEditTableListener
 
-from widgets.color_utility import random_color
+from components.color_utility import random_color
 
 
 class TranscriptionTreeview(mtkEditTableListener):

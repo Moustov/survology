@@ -22,7 +22,7 @@ import soundfile as sf
 # models : https://alphacephei.com/vosk/models
 from vosk import Model, KaldiRecognizer
 
-from widgets.transcription_treeview import TranscriptionTreeview
+from components.transcription_treeview import TranscriptionTreeview
 
 
 class LiveTranscript(tkinter.Tk):
