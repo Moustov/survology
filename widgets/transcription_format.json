@@ -27,22 +27,19 @@
     "Part#1": "#EBCDAA"
   },
   "transcription_labels": {
-    "1": [
+    "1.0": [
       {
         "label": "here",
-        "beg": "1.0",
         "end": "1.5"
       },
       {
         "label": "there",
-        "beg": "1.6",
         "end": "1.11"
       }
     ],
-    "2": [
+    "1.6": [
       {
         "label": "here",
-        "beg": "1.4",
         "end": "1.8"
       }
     ]

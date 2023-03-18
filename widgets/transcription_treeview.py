@@ -127,24 +127,8 @@ class TranscriptionTreeview(mtkEditTableListener):
         self.transcription_tree.tag_configure(part_name, background=color)
         self.transcription_tree.item(self.transcription_tree.rowID, text=part_name, values=values, tags=part_name)
 
-    def save_json(self, file: str):
-        transcription = self.transcription_tree.get_data()
-        parts_colors = self.get_parts_colors()
-        transcription_labels = self.get_transcription_labels()
-        labels = self.get_labels()
-        transcription = {"transcription": transcription, "parts_colors": parts_colors,
-                         "transcription_labels": transcription_labels, "labels": labels}
-        with open(file, "w", encoding='utf-8') as file:
-            json.dump(transcription, file, indent=4, ensure_ascii=False)
-
-    def load_json(self, file: str):
-        """
-        loads a transcription formatted json
-        """
-        if os.path.exists(file):
-            with open(file, "r", encoding='utf-8') as json_file:
-                transcription = json.load(json_file)
-                self.set_data(transcription)
+    def get_data(self) -> dict:
+        return self.transcription_tree.get_data()
 
     def set_data(self, transcription: dict):
         """
