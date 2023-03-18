@@ -79,11 +79,13 @@ class LiveTranscript(tkinter.Tk):
 
     def _save_transcription(self):
         transcription = self.sentences.get_data()
+        transcription_content = {"transcription": transcription, "parts_colors": {},
+                                 "transcription_labels": {}, "labels": {}}
         if not self.file_name:
             self.file_name = "audio samples/" + str(datetime.now())
             self.file_name = self.file_name.replace(':', '-')
         with open(self.file_name + ".MP3.json", "w", encoding='utf-8') as file:
-            json.dump(transcription, file, indent=4, ensure_ascii=False)
+            json.dump(transcription_content, file, indent=4, ensure_ascii=False)
         # save WAV
         print("saving:", f"{self.file_name}.WAV", 'x', self.samplerate, sf.default_subtype("WAV"))
         with sf.SoundFile(f"{self.file_name}.WAV", mode='x', samplerate=self.samplerate,

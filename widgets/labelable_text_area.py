@@ -32,6 +32,7 @@ class LabelableTextArea:
         line_id = 1
         beg_pos = -1
         found = False
+        # todo select all occurrencies of a selected text
         for line in lines:
             beg_pos = line.find(selected_text)
             if beg_pos >= 0:
