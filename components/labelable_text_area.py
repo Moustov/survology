@@ -140,6 +140,9 @@ class LabelableTextArea:
                              labels[labeled_text[i]["label"]]["color"]]
         print("labels", labels, res_labels)
         self.labels_etv.set_data(res_labels)
+        for i in labeled_text.keys():
+            self.labels_etv.tag_configure(labeled_text[i]["label"], background=labels[labeled_text[i]["label"]]["color"])
+            self.labels_etv.item(i, tags=labeled_text[i]["label"])
 
     def _on_right_click(self, event):
         print(event)
