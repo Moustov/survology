@@ -186,20 +186,6 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
                 self.labelable_widget.set_text("", {},
                                                self.json_labels)
 
-                for label_key in self.json_labels.keys():
-                    print("row_key", label_key, self.labels_treeview.get_children())
-                    labels_json = self.labels_treeview.get_data()
-                    labels_json[label_key] = {"label": label_key, "description": self.json_labels[label_key]["description"],
-                                              "color": self.json_labels[label_key]["color"]
-                                              }
-                    self.labels_treeview.set_data(labels_json)
-                    # values = self.labels_treeview.item(str(label_key))['values']
-                    # tags = []
-                    # for pos_key in self.labels_treeview[str(label_key)].keys():
-                    #     tags.append(self.labels_treeview[str(label_key)][pos_key]['label'])
-                    # values[2] = "; ".join(list(dict.fromkeys(tags)))    # add unique labels
-                    # self.labels_treeview.item(str(label_key), values=values)
-
     def _do_transcription_freeze(self):
         self.carry_on = False
 

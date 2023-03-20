@@ -92,7 +92,7 @@ class LabelableTextArea(LabelableTextAreaListener):
         return self.local_frame
 
     def noop(self):
-        pass
+        print("<< did nothing >>")
 
     def add_label(self):
         new_label_name = random_color()  # the new name is the color
@@ -151,19 +151,25 @@ class LabelableTextArea(LabelableTextAreaListener):
         """
         res_labels = {}
         index = 0
+        # add labels into treeview
+        print("set_label_list", labels_json)
         for label_name in labels_json.keys():
-            print("set_label_list", label_name, labels_json)
+            print("set_label_list label_name", label_name)
             res_labels[str(index)] = [label_name, labels_json[label_name]["description"],
                                       labels_json[label_name]["color"]]
             index += 1
-        print("labels", labels_json, res_labels)
+        print("set_label_list res_labels", res_labels)
         self.labels_treeview.set_data(res_labels)
+        # add labels styles and assign to rows
         index = 0
-        for label_name in res_labels.keys():
+        for label_name in labels_json.keys():
             # define tag in treeview
+            print("tag_configure", label_name, labels_json[label_name]["color"])
             self.labels_treeview.tag_configure(label_name, background=labels_json[label_name]["color"])
             # assign tag to row
+            print("self.labels_treeview.item", str(index), label_name)
             self.labels_treeview.item(str(index), tags=label_name)
+            print("tags", self.labels_treeview.item(index)['tags'], self.labels_treeview.item(index)['values'])
             index += 1
 
     def _on_right_click(self, event):
