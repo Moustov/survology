@@ -33,5 +33,9 @@ SURVOLOGY
 * Competitors:
   * NVivo: https://www.youtube.com/results?search_query=survey+nvivo
   * MAXQDA: https://www.youtube.com/results?search_query=maxqda
+* Tkinter Events:
+  * http://tkinter.fdex.eu/doc/event.html#events
+  * https://stackoverflow.com/questions/32289175/list-of-all-tkinter-events
+
 
 

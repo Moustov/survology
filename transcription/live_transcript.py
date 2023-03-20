@@ -49,9 +49,8 @@ class LiveTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.progress_bar = None
         self.queue = queue.Queue()
 
-    def display(self, root: tkinter.Tk, grid_row: int = 0, grid_col: int = 0):
+    def display(self, root: tkinter.Tk):
         self.frame = Frame(root)
-        self.frame.grid(row=grid_row, column=grid_col)
         self.title_label = Label(self.frame, text="Live Transcription")
         self.title_label.pack(padx=5, pady=5)
         self.listen_button = Button(self.frame, text='Listen', command=self._do_listen)
@@ -63,17 +62,17 @@ class LiveTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.display_transcription_frame()
         #
         self.labelable_widget = LabelableTextArea(self.frame, self)
-        self.labelable_content_labelframe = self.labelable_widget.get_frame_pack(fill=BOTH, expand=1)
+        self.labelable_content_labelframe = self.labelable_widget.get_ui_content(self.frame)
+        self.labelable_content_labelframe.pack(fill=BOTH, expand=1)
         #
         self.save_button = Button(self.frame, text='Stop & Save transcription', command=self._do_stop_transcription)
         self.save_button.pack(padx=5, pady=5)
+        return self.frame
 
     def display_transcription_frame(self):
         self.transcription_content_widget = TranscriptionTreeview(self.frame)
-        self.transcription_content_labelframe = self.transcription_content_widget.get_frame_pack(fill=BOTH, expand=1)
-        self.sentences = self.transcription_content_widget.transcription_tree
-        # http://tkinter.fdex.eu/doc/event.html#events
-        # https://stackoverflow.com/questions/32289175/list-of-all-tkinter-events
+        self.transcription_content_labelframe = self.transcription_content_widget.get_transcription_treeview_label_frame(self.frame)
+        self.sentences = self.transcription_content_widget.transcription_treeview
         self.sentences.bind("<ButtonRelease-1>", self._on_sentence_select)
 
     def _do_stop_transcription(self):

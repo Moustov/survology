@@ -6,30 +6,34 @@ from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable
 
 from components.color_utility import random_color
 from components.labelable_text_area_listener import LabelableTextAreaListener
+from components.labels_treeview import LabelTreeview
 
 
-class LabelableTextArea:
+class LabelableTextArea(LabelableTextAreaListener):
     def __init__(self, frame: Frame, listener: LabelableTextAreaListener):
+        self.labels_treeview = None
+        self.labels_content_widget = None
+        self.validate_text_button = None
         self.frame = frame
         self.listener = listener
-        self.text = None
+        self.area_text = None
         self.local_frame = None
         self.local_content_labelframe = LabelFrame(self.frame, text='Text detail')
         self.local_frame = None
         self.menu = None
         self.tags_in_text = {}
-        self.tags = {"here":
-            {
-                "color": "#ABCDAB",
-                "description": "a description for the label 'here'"
-            }
-        }
-        self._add_ui_content()
+        self.tags = {}
+        # {"here":
+        #     {
+        #         "color": "#ABCDAB",
+        #         "description": "a description for the label 'here'"
+        #     }
+        # }
 
     def add_label_in_text(self):
-        selected_text = self.text.selection_get()
+        selected_text = self.area_text.selection_get()
         print("selected_text", selected_text)
-        text = self.text.get(1.0, "end-1c")
+        text = self.area_text.get(1.0, "end-1c")
         lines = text.split("\n")
         line_id = 1
         beg_pos = -1
@@ -43,106 +47,124 @@ class LabelableTextArea:
             line_id += 1
         if found:
             end_pos = beg_pos + len(selected_text)
+            # TODO select the right label
             print("here --", beg_pos, text.find(selected_text), line_id, selected_text, f"{line_id}.{beg_pos}",
                   f"{line_id}.{end_pos}")
-            self.text.tag_add("here", f"{line_id}.{beg_pos}", f"{line_id}.{end_pos}")
+            self.area_text.tag_add("here", f"{line_id}.{beg_pos}", f"{line_id}.{end_pos}")
             self.tags_in_text[f"{line_id}.{beg_pos}"] = {"label": "here", "end": f"{line_id}.{end_pos}",
                                                          "text": selected_text}
             print(f"tags_in_text[{line_id}.{beg_pos}]", self.tags_in_text[f"{line_id}.{beg_pos}"])
         else:
             raise ValueError(f"'{selected_text}' not in '{text}'")
 
-    def get_frame_pack(self, fill=BOTH, expand=1) -> LabelFrame:
-        """
-        adds a transcription LabelFrame in a pack-like layout
-        """
-        self.local_content_labelframe.pack(fill=fill, expand=expand, padx=5, pady=5)
-        return self.local_content_labelframe
-
-    def get_frame_grid(self, row_pos: int, col_pos: int) -> LabelFrame:
-        """
-        adds a transcription LabelFrame in a grid-like layout
-        """
-        self.local_content_labelframe.grid(row=row_pos, column=col_pos, padx=5, pady=5)
-        return self.local_content_labelframe
-
     def _do_update_text_in_treeview(self):
         """
         updates the listener with the Text content, transcription labels & labels
         """
-        text = self.text.get(1.0, "end-1c")
+        text = self.area_text.get(1.0, "end-1c")
         print("_do_validate_text", text)
         self.listener.set_new_text(text)
         self.listener.set_transcription_labels(self.tags_in_text)
         self.listener.set_labels(self.tags)
 
-    def _add_ui_content(self):
-        self.local_frame = Frame(self.local_content_labelframe)
-        self.local_frame.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="nsew", ipadx=250, ipady=40)
+    def get_ui_content(self, frame: Frame) -> LabelFrame:
+        self.local_frame = LabelFrame(frame)
         #
-        self.text = Text(self.local_frame, height=5)
-        self.text.grid(row=0, column=0, sticky="ns")
-        self.text.tag_config("here", background=self.get_tag_color("here"))
+        self.area_text = Text(self.local_frame, height=5)
+        self.area_text.grid(row=0, column=0, sticky="ns")
         #
         self.validate_text_button = Button(self.local_frame, text='Update', command=self._do_update_text_in_treeview)
         self.validate_text_button.grid(row=0, column=1, padx=5, pady=5)
         #
         col_ids = ('label', 'description', 'color')
         col_titles = ('label', 'description', 'color')
-        self.labels_etv = mtkEditTable(self.local_frame, columns=col_ids, column_titles=col_titles)
-        self.labels_etv.grid(row=0, column=2, padx=5, pady=5, sticky="ew", ipadx=100)
+        self.labels_content_widget = LabelTreeview(self.local_frame)
+        self.local_content_labelframe = self.labels_content_widget.get_ui_content(self.local_frame)
+        self.labels_treeview = self.labels_content_widget.label_treeview
+        self.local_content_labelframe.grid(row=0, column=2, padx=5, pady=5)
         # right click menu - https://tkdocs.com/tutorial/menus.html
-        self.menu = Menu(self.frame, tearoff=0)
+        self.menu = Menu(self.local_frame, tearoff=0)
         self.menu.add_command(label="Assign tag", command=self.add_label_in_text)
         self.menu.add_command(label="Assign new tag", command=self.add_label)
         self.menu.add_separator()
         self.menu.add_command(label="Delete tag", command=self.noop)
-        self.text.bind("<Button-3>", self._on_right_click)
+        self.area_text.bind("<Button-3>", self._on_right_click)
+        return self.local_frame
 
     def noop(self):
         pass
 
     def add_label(self):
-        new_color = random_color()
-        self.tags[new_color] = {}
-        self.tags[new_color]["color"] = new_color
-        self.tags[new_color]["description"]: f"a description for the label '{new_color}'"
+        new_label_name = random_color()  # the new name is the color
+        self.tags[new_label_name] = {}
+        self.tags[new_label_name]["color"] = new_label_name
+        self.tags[new_label_name]["description"]: f"a description for the label '{new_label_name}'"
+        # add new tag in
+        json = self.labels_treeview.get_data()
+        json[str(len(json.keys()))] = [self.tags[new_label_name], self.tags[new_label_name]["description"],
+                                       self.tags[new_label_name]["color"]]
+        print("new labels", json)
+        self.labels_treeview.set_data(json)
 
-    def set_text(self, text: str, labeled_text: dict, labels: dict):
+    def set_text(self, text: str, row_transcription_labels_json: dict, labels_json: dict):
         """
         labeled_text: see (components/transcription_format.json)[components/transcription_format.json]["transcription_labels"]
+        :row_transcription_labels_json: the transcription_labels_json of the selected row
+                eg. {"1.109": {
+                        "label": "here",
+                        "end": "1.119",
+                        "text": "associatif"
+                        }
+                    }
         """
+        print("lta set_text", text, row_transcription_labels_json, labels_json)
         # remove all previous tags in Text content
-        for tag in self.text.tag_names():
-            self.text.tag_remove(tag, "1.0", "end")
+        for tag in self.area_text.tag_names():
+            self.area_text.tag_remove(tag, "1.0", "end")
         # remove text content
-        self.text.delete('1.0', END)
+        self.area_text.delete('1.0', END)
         # set to new text
-        self.text.insert(END, text)
-        # set tags
-        self.set_label_list(labeled_text, labels)
-        for beg_key in labeled_text.keys():
-            print("set_text", labeled_text[beg_key])
-            self.text.tag_add(labeled_text[beg_key]["label"], beg_key, labeled_text[beg_key]["end"])
-            self.tags_in_text[beg_key] = {"label": labeled_text[beg_key]["label"], "end": labeled_text[beg_key]["end"],
-                                          "text": labeled_text[beg_key]["text"]}
+        self.area_text.insert(END, text)
+        # set tags in text
+        if text:
+            print("=== set_text", row_transcription_labels_json)
+            for beg_key in row_transcription_labels_json.keys():
+                print("row_transcription_labels_json", row_transcription_labels_json)
+                print("beg_key", beg_key)
+                label = row_transcription_labels_json[str(beg_key)]["label"]
+                print("label", label)
+                print(f"row_transcription_labels_json[{str(beg_key)}]['label']",
+                      row_transcription_labels_json[str(beg_key)]["label"])
+                end_key = row_transcription_labels_json[str(beg_key)]["end"]
+                print("end_key", end_key)
+                selected_text = row_transcription_labels_json[str(beg_key)]["text"]
+                print("selected_text", selected_text)
+                self.area_text.tag_add(label, beg_key, end_key)
+                self.tags_in_text[beg_key] = {"label": label,
+                                              "end": end_key,
+                                              "text": selected_text}
 
-    def set_label_list(self, labeled_text: dict, labels: dict):
+    def set_label_list(self, labels_json: dict):
         """
         labeled_text: see (components/transcription_format.json)[components/transcription_format.json]["transcription_labels"]
         labels: see (components/transcription_format.json)[components/transcription_format.json]["labels"]
         """
         res_labels = {}
-        for i in labeled_text.keys():
-            print("set_text", i, labeled_text)
-            res_labels[i] = [labeled_text[i]["label"],
-                             labels[labeled_text[i]["label"]]["description"],
-                             labels[labeled_text[i]["label"]]["color"]]
-        print("labels", labels, res_labels)
-        self.labels_etv.set_data(res_labels)
-        for i in labeled_text.keys():
-            self.labels_etv.tag_configure(labeled_text[i]["label"], background=labels[labeled_text[i]["label"]]["color"])
-            self.labels_etv.item(i, tags=labeled_text[i]["label"])
+        index = 0
+        for label_name in labels_json.keys():
+            print("set_label_list", label_name, labels_json)
+            res_labels[str(index)] = [label_name, labels_json[label_name]["description"],
+                                      labels_json[label_name]["color"]]
+            index += 1
+        print("labels", labels_json, res_labels)
+        self.labels_treeview.set_data(res_labels)
+        index = 0
+        for label_name in res_labels.keys():
+            # define tag in treeview
+            self.labels_treeview.tag_configure(label_name, background=labels_json[label_name]["color"])
+            # assign tag to row
+            self.labels_treeview.item(str(index), tags=label_name)
+            index += 1
 
     def _on_right_click(self, event):
         print(event)

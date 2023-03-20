@@ -10,7 +10,6 @@ from tkinter.filedialog import askopenfilename
 from tkinter.ttk import Progressbar
 
 import pygame
-from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable
 # punctuation: https://github.com/benob/recasepunc
 # models : https://alphacephei.com/vosk/models
 from vosk import Model, KaldiRecognizer, SetLogLevel
@@ -70,6 +69,10 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
 
     def __init__(self):
         # UI
+        self.labelable_widget_frame = None
+        self.labels_treeview = None
+        self.transcription_content_widget_frame = None
+        self.player_labelframe = None
         self.labelable_labelframe = None
         self.labelable_widget = None
         self.transcription_content_widget = None
@@ -84,8 +87,8 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.audio_file_text = StringVar(value="(no audio file)")
         self.resume_transcription_button = None
         self.transcription_content_labelframe = None
-        self.progression_labelframe = None
-        self.file_labelframe = None
+        self.transcription_controls_labelframe = None
+        self.audio_file_labelframe = None
         self.duration_text = StringVar(value="duration unknown")
         self.duration_label = None
         self.transcription_frame = None
@@ -93,7 +96,7 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.verscrlbar = None
         self.title_label = None
         self.transcript_button = None
-        self.transcription_tree = None
+        self.transcription_treeview = None
         self.select_file_button = None
         self.position_label = None
         self.save_button = None
@@ -112,11 +115,11 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.timecode = None
         self.text_index = 0
         self.file_to_transcript = None
-        self.labels = None
+        self.json_labels = None
         self.time_line = None
         self.transcription_file_text = None
-        self.transcription_labels = None
-        self.parts_colors = None
+        self.json_transcription_labels = None
+        self.json_parts_colors = None
 
         # sound
         SetLogLevel(0)
@@ -124,7 +127,7 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         #
         pygame.mixer.init()
 
-    def display(self, root: tkinter.Tk, grid_row: int = 0, grid_col: int = 0):
+    def get_ui_frame(self, root: tkinter.Tk) -> Frame:
         """
 
         :param root:
@@ -136,14 +139,19 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         todo: play/pause audio file from a line
         """
         self.frame = Frame(root)
-        self.frame.grid(row=grid_row, column=grid_col, columnspan=5, sticky='nsew', padx=5, pady=5)
-        self.display_audio_file_frame()
-        self.display_transcription_controls_frame()
-        self.display_transcription_frame()
-        self.display_labelable_text_frame()
-        self.display_player_frame()
+        self.audio_file_labelframe = self.get_ui_audio_file_label_frame(self.frame)
+        self.audio_file_labelframe.pack(fill=BOTH, expand=1, padx=5, pady=5)
+        self.transcription_controls_labelframe = self.get_ui_transcription_controls_labelframe(self.frame)
+        self.transcription_controls_labelframe.pack(fill=BOTH, expand=1, padx=5, pady=5)
+        self.transcription_content_labelframe = self.get_ui_transcription_content_labelframe(self.frame)
+        self.transcription_content_labelframe.pack(fill=BOTH, expand=1, padx=5, pady=5)
+        self.labelable_content_labelframe = self.get_ui_labelable_content_labelframe(self.frame)
+        self.labelable_content_labelframe.pack(fill=BOTH, expand=1, padx=5, pady=5)
+        self.player_labelframe = self.get_player_labelframe(self.frame)
+        self.player_labelframe.pack(fill=BOTH, expand=1, padx=5, pady=5)
         self.save_button = Button(self.frame, text='Save transcription', command=self.save_json)
         self.save_button.pack(padx=5, pady=5)
+        return self.frame
 
     def _do_transcription_resume(self):
         self.carry_on = True
@@ -154,8 +162,8 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         transcription = self.transcription_content_widget.get_data()
         file = f"{self.file_to_transcript}.json"
         transcription_content = {"transcription": transcription,
-                                 "parts_colors": self.parts_colors,
-                                 "transcription_labels": self.transcription_labels, "labels": self.labels}
+                                 "parts_colors": self.json_parts_colors,
+                                 "transcription_labels": self.json_transcription_labels, "labels": self.json_labels}
         print("save", transcription_content)
         with open(file, "w", encoding='utf-8') as file:
             json.dump(transcription_content, file, indent=4, ensure_ascii=False)
@@ -167,18 +175,30 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         if os.path.exists(file):
             with open(file, "r", encoding='utf-8') as json_file:
                 transcription_file_content_json = json.load(json_file)
+                print("load_json", transcription_file_content_json)
+
                 self.transcription_content_widget.set_data(transcription_file_content_json)
-                self.parts_colors = transcription_file_content_json["parts_colors"]
-                self.transcription_labels = transcription_file_content_json["transcription_labels"]
-                if "labels" in transcription_file_content_json.keys():
-                    self.labels = transcription_file_content_json["labels"]
-                    for row_key in self.transcription_labels.keys():
-                        values = self.transcription_tree.item(row_key)['values']
-                        tags = []
-                        for pos_key in self.transcription_labels[row_key].keys():
-                            tags.append(self.transcription_labels[row_key][pos_key]['label'])
-                        values[2] = "; ".join(list(dict.fromkeys(tags)))    # add unique labels
-                        self.transcription_tree.item(row_key, values=values)
+
+                self.json_parts_colors = transcription_file_content_json["parts_colors"]
+                self.json_transcription_labels = transcription_file_content_json["transcription_labels"]
+                self.json_labels = transcription_file_content_json["labels"]
+                self.labelable_widget.set_label_list(self.json_labels)
+                self.labelable_widget.set_text("", {},
+                                               self.json_labels)
+
+                for label_key in self.json_labels.keys():
+                    print("row_key", label_key, self.labels_treeview.get_children())
+                    labels_json = self.labels_treeview.get_data()
+                    labels_json[label_key] = {"label": label_key, "description": self.json_labels[label_key]["description"],
+                                              "color": self.json_labels[label_key]["color"]
+                                              }
+                    self.labels_treeview.set_data(labels_json)
+                    # values = self.labels_treeview.item(str(label_key))['values']
+                    # tags = []
+                    # for pos_key in self.labels_treeview[str(label_key)].keys():
+                    #     tags.append(self.labels_treeview[str(label_key)][pos_key]['label'])
+                    # values[2] = "; ".join(list(dict.fromkeys(tags)))    # add unique labels
+                    # self.labels_treeview.item(str(label_key), values=values)
 
     def _do_transcription_freeze(self):
         self.carry_on = False
@@ -205,7 +225,7 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         Tk.update(self.frame)
 
     def _do_transcription_start(self):
-        self.transcription_tree.clear_data()
+        self.transcription_treeview.clear_data()
         self.timecode = None
         self.progress_bar['maximum'] = self.duration
         self.progress_bar.step(2)
@@ -241,10 +261,10 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
                     if self.rec.AcceptWaveform(data):
                         txt = json.loads(self.rec.Result())
                         if txt['text'] != "":
-                            self.transcription_tree.insert(parent="", index='end', iid=self.text_index, text="",
-                                                           values=(time_code_to_chrono(self.timecode), txt['text']))
+                            self.transcription_treeview.insert(parent="", index='end', iid=self.text_index, text="",
+                                                               values=(time_code_to_chrono(self.timecode), txt['text']))
                             self.text_index += 1
-                            self.transcription_tree.yview_moveto(1.0)
+                            self.transcription_treeview.yview_moveto(1.0)
                     else:
                         partial = json.loads(self.rec.PartialResult())
                         if partial["partial"] == "":
@@ -256,77 +276,83 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.time_line = self.transcription_content_widget.get_timeline()
         # self.progress_bar.stop()
 
-    def display_audio_file_frame(self):
-        self.file_labelframe = LabelFrame(self.frame, text='File')
-        self.file_labelframe.pack(fill=BOTH, expand=1, padx=5, pady=5)
-        self.title_label = Label(self.file_labelframe, text="Audio file")
+    def get_ui_audio_file_label_frame(self, frame: Frame) -> LabelFrame:
+        self.audio_file_labelframe = LabelFrame(frame, text='File')
+        self.title_label = Label(self.audio_file_labelframe, text="Audio file")
         self.title_label.grid(row=0, column=0, padx=5, pady=5)
-        self.select_file_button = Button(self.file_labelframe, text='Select file', command=self._do_load_audio_file)
+        self.select_file_button = Button(self.audio_file_labelframe, text='Select file',
+                                         command=self._do_load_audio_file)
         self.select_file_button.grid(row=0, column=1, padx=5, pady=5)
-        self.audio_file_label = Label(self.file_labelframe, textvariable=self.audio_file_text)
+        self.audio_file_label = Label(self.audio_file_labelframe, textvariable=self.audio_file_text)
         self.audio_file_label.grid(row=0, column=2, padx=5, pady=5)
+        return self.audio_file_labelframe
 
-    def display_transcription_controls_frame(self):
-        self.progression_labelframe = LabelFrame(self.frame, text='Transcription controls')
-        self.progression_labelframe.pack(fill=BOTH, expand=1, padx=5, pady=5)
-        self.progress_bar = Progressbar(self.progression_labelframe, orient='horizontal', mode='determinate',
+    def get_ui_transcription_controls_labelframe(self, frame: Frame) -> LabelFrame:
+        self.transcription_controls_labelframe = LabelFrame(frame, text='Transcription controls')
+        self.progress_bar = Progressbar(self.transcription_controls_labelframe, orient='horizontal', mode='determinate',
                                         length=280)
         self.progress_bar.grid(row=0, column=0, columnspan=3, padx=5, pady=5)
-        self.start_transcription_button = Button(self.progression_labelframe, text='start',
+        self.start_transcription_button = Button(self.transcription_controls_labelframe, text='start',
                                                  command=self._do_transcription_start)
         self.start_transcription_button.grid(row=1, column=0, padx=5, pady=5)
-        self.freeze_transcription_button = Button(self.progression_labelframe, text='freeze',
+        self.freeze_transcription_button = Button(self.transcription_controls_labelframe, text='freeze',
                                                   command=self._do_transcription_freeze)
         self.freeze_transcription_button.grid(row=1, column=1, padx=5, pady=5)
-        self.resume_transcription_button = Button(self.progression_labelframe, text='resume',
+        self.resume_transcription_button = Button(self.transcription_controls_labelframe, text='resume',
                                                   command=self._do_transcription_resume)
         self.resume_transcription_button.grid(row=1, column=2, padx=5, pady=5)
-        self.duration_label = Label(self.progression_labelframe, textvariable=self.duration_text)
+        self.duration_label = Label(self.transcription_controls_labelframe, textvariable=self.duration_text)
         self.duration_label.grid(row=1, column=3, padx=5, pady=5)
+        return self.transcription_controls_labelframe
 
-    def display_labelable_text_frame(self):
-        self.labelable_widget = LabelableTextArea(self.frame, self)
-        self.labelable_content_labelframe = self.labelable_widget.get_frame_pack(fill=BOTH, expand=1)
+    def get_ui_labelable_content_labelframe(self, frame: Frame) -> LabelFrame:
+        print("get_ui_labelable_content_labelframe")
+        self.labelable_widget = LabelableTextArea(frame, self)
+        self.labelable_widget_frame = self.labelable_widget.get_ui_content(frame)
+        self.labels_treeview = self.labelable_widget.labels_treeview
+        return self.labelable_widget_frame
 
-    def display_transcription_frame(self):
-        self.transcription_content_widget = TranscriptionTreeview(self.frame)
-        self.transcription_content_labelframe = self.transcription_content_widget.get_frame_pack(fill=BOTH, expand=1)
-        self.transcription_tree = self.transcription_content_widget.transcription_tree
+    def get_ui_transcription_content_labelframe(self, frame: Frame) -> LabelFrame:
+        self.transcription_content_widget = TranscriptionTreeview(frame)
+        self.transcription_content_widget_frame = self.transcription_content_widget.get_ui_content(frame)
+        self.transcription_treeview = self.transcription_content_widget.transcription_treeview
         # http://tkinter.fdex.eu/doc/event.html#events
         # https://stackoverflow.com/questions/32289175/list-of-all-tkinter-events
-        self.transcription_tree.bind("<ButtonRelease-1>", self._on_select_transcription_row)
-        self.transcription_tree.menu.add_separator()
-        self.transcription_tree.menu.add_command(label="Set player", command=self.set_player_from_current_tree_row)
+        self.transcription_treeview.bind("<ButtonRelease-1>", self._on_select_transcription_row)
+        self.transcription_treeview.menu.add_separator()
+        self.transcription_treeview.menu.add_command(label="Set player", command=self.set_player_from_current_tree_row)
+        return self.transcription_content_widget_frame
 
     def set_new_text(self, text: str):
         """
         set the new edited text
         """
-        values = self.transcription_tree.item(self.transcription_tree.rowID)['values']
+        values = self.transcription_treeview.item(self.transcription_treeview.rowID)['values']
         values[1] = text
-        self.transcription_tree.item(self.transcription_tree.rowID, values=values)
+        self.transcription_treeview.item(self.transcription_treeview.rowID, values=values)
 
     def set_labels(self, labels: dict):
         """
         set the new labels
         """
-        self.labels = labels
+        self.json_labels = labels
+        print("aft set_labels", self.json_labels)
 
     def set_transcription_labels(self, transcription_labels: dict):
         """
         set the new label positions in the text
         """
-        self.transcription_labels[self.transcription_tree.rowID] = transcription_labels
+        self.json_transcription_labels[self.transcription_treeview.rowID] = transcription_labels
 
-        values = self.transcription_tree.item(self.transcription_tree.rowID)['values']
+        values = self.transcription_treeview.item(self.transcription_treeview.rowID)['values']
         tags = []
         for beg_key in transcription_labels.keys():
             tags.append(transcription_labels[beg_key]['label'])
         values[2] = "; ".join(list(dict.fromkeys(tags)))  # add unique labels
-        self.transcription_tree.item(self.transcription_tree.rowID, values=values)
+        self.transcription_treeview.item(self.transcription_treeview.rowID, values=values)
 
     def set_player_from_current_tree_row(self):
-        selected_values = self.transcription_tree.item(self.transcription_tree.rowID)
+        selected_values = self.transcription_treeview.item(self.transcription_treeview.rowID)
         values = selected_values.get("values")
         chrono = chrono_to_time_code(values[0])
         self.current_timecode_offset = chrono * 1000
@@ -345,10 +371,11 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         should be done in a thread
         """
         tree = event.widget
+        print("_on_update_widgets_from_selected_transcription_row", event)
         # selection = [tree.item(item)["text"] for item in tree.selection()]    # tree part
         row = [tree.item(item)["values"] for item in tree.selection()]
         if row:
-            self.transcription_tree.rowID = tree.selection()[0]
+            self.transcription_treeview.rowID = tree.selection()[0]
             current_sec = chrono_to_time_code(row[0][0])
             self.current_timecode_offset = current_sec * 1000
             # for MP3 - https://stackoverflow.com/questions/73089784/problem-mixer-music-get-pos-after-set-position-by-mixer-music-set-pos
@@ -356,12 +383,16 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
             # self._set_mixer_player_position_only(self.current_timecode_offset)
             self.player_slider_value.set(current_sec)
             self._set_mixer_ui_position_only(current_sec)
-            print("self.transcription_labels", "'", self.transcription_tree.rowID, "'", self.transcription_labels)
-            if self.transcription_tree.rowID in self.transcription_labels.keys():
-                self.labelable_widget.set_text(row[0][1], self.transcription_labels[self.transcription_tree.rowID],
-                                               self.labels)
+            print("self.transcription_labels", "'", self.transcription_treeview.rowID, "'",
+                  self.json_transcription_labels)
+            transcription = row[0][1]
+            print("****", transcription)
+            if self.transcription_treeview.rowID in self.json_transcription_labels.keys():
+                self.labelable_widget.set_text(transcription,
+                                               self.json_transcription_labels[self.transcription_treeview.rowID],
+                                               self.json_labels)
             else:
-                self.labelable_widget.set_text(row[0][1], {}, self.labels)
+                self.labelable_widget.set_text(transcription, {}, self.json_labels)
             # self._set_transcription_position(pos)
 
     def _do_player_play(self):
@@ -398,9 +429,8 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
             self.frame.after_cancel(self.refresh_player_position_job)  # Loop every sec
             self.refresh_player_position_job = None
 
-    def display_player_frame(self):
-        player_labelframe = LabelFrame(self.frame, text="Audio player")
-        player_labelframe.pack(fill=BOTH, expand=1, padx=5, pady=5)
+    def get_player_labelframe(self, frame) -> LabelFrame:
+        self.player_labelframe = LabelFrame(frame, text="Audio player")
         #
         # img = PhotoImage(file="img.png")
         # self.play_button = Button(root, image=img, borderwidth=0, command=self._do_play)
@@ -412,22 +442,24 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         # self.play_button = Button(player_labelframe, text="|>", command=self._do_player_play, width=10, height=1)
         # self.play_button.grid(row=0, column=0, padx=5, pady=5)
         # Inserting Pause Button
-        self.pause_button = Button(player_labelframe, text="||", command=self._do_player_pause, width=8, height=1)
+        self.pause_button = Button(self.player_labelframe, text="||", command=self._do_player_pause, width=8, height=1)
         self.pause_button.grid(row=0, column=1, padx=5, pady=5)
         # Inserting Unpause Button
-        self.unpause_button = Button(player_labelframe, text="UNPAUSE", command=self._do_player_unpause, width=10,
+        self.unpause_button = Button(self.player_labelframe, text="UNPAUSE", command=self._do_player_unpause, width=10,
                                      height=1)
         self.unpause_button.grid(row=0, column=2, padx=5, pady=5)
         # # Inserting Stop Button
         # self.stop_button = Button(player_labelframe, text="STOP", command=self._do_player_stop, width=10, height=1)
         # self.stop_button.grid(row=0, column=3, padx=5, pady=5)
 
-        self.player_slider_scale = Scale(player_labelframe, to=self.duration if self.duration else 1, orient=HORIZONTAL,
+        self.player_slider_scale = Scale(self.player_labelframe, to=self.duration if self.duration else 1,
+                                         orient=HORIZONTAL,
                                          length=500, resolution=1,
                                          showvalue=True, tickinterval=self.duration // 10,
                                          variable=self.player_slider_value,
                                          command=self._on_select_player_position)
         self.player_slider_scale.grid(row=1, column=0, columnspan=4, padx=5, pady=5)
+        return self.player_labelframe
 
     def _on_select_player_position(self, event):
         """
@@ -482,8 +514,8 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
             chrono = self.time_line[row_id][0]
             sec = chrono_to_time_code(chrono)
             if prev_sec <= pos_sec < sec:
-                self.transcription_tree.selection_set(prev_row_id)
-                self.transcription_tree.see(prev_row_id)
+                self.transcription_treeview.selection_set(prev_row_id)
+                self.transcription_treeview.see(prev_row_id)
                 break
             prev_sec = sec
             prev_row_id = row_id

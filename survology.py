@@ -1,17 +1,17 @@
 import tkinter
-from tkinter import Label, Menu, messagebox, Frame, Scrollbar
+from tkinter import Label, Menu, messagebox
 # https://www.youtube.com/watch?v=XhCfsuMyhXo&list=PLCC34OHNcOtoC6GglhF3ncJ5rLwQrLGnV&index=6
 from tkinter.filedialog import askopenfilename
 
 from download_mp3_youtube import DownloadMP3Youtube
 from transcription.audiofile_transcript import AudioFileTranscript
-from capturing.live_transcript import LiveTranscript
+from live_transcript import LiveTranscript
 
 
 class SurvologyRootWindow(tkinter.Tk):
     def __init__(self):
         super().__init__()
-        self.file_transcript = None
+        self.audio_file_transcript = None
         self.record_youtube = None
         self.live_transcript = None
         self.menu_bar = None
@@ -56,19 +56,26 @@ class SurvologyRootWindow(tkinter.Tk):
         self.menu_bar.add_cascade(label="Interview", menu=menu_interview)
 
         menu_help = Menu(self.menu_bar, tearoff=0)
+        menu_help.add_command(label="Configure", command=self.do_configure)
         menu_help.add_command(label="About", command=self.do_about)
         self.menu_bar.add_cascade(label="Help", menu=menu_help)
         self.config(menu=self.menu_bar)
 
+    def do_configure(self):
+        # todo : open a config screen to download/set vosk dictionaries
+        pass
+
     def do_live_transcription(self):
         self.clear_root()
         self.live_transcript = LiveTranscript()
-        self.live_transcript.display(self, grid_row=1, grid_col=0)
+        frame = self.live_transcript.display(self)
+        frame.grid(row=1, column=0, columnspan=5, sticky='nsew', padx=5, pady=5)
 
     def do_transcript_record(self):
         self.clear_root()
-        self.file_transcript = AudioFileTranscript()
-        self.file_transcript.display(self, grid_row=1, grid_col=0)
+        self.audio_file_transcript = AudioFileTranscript()
+        frame = self.audio_file_transcript.get_ui_frame(self)
+        frame.grid(row=1, column=0, columnspan=5, sticky='nsew', padx=5, pady=5)
 
     def do_about(self):
         messagebox.showinfo("Survology", f"(c) C. Moustier - 2023")
@@ -85,8 +92,8 @@ class SurvologyRootWindow(tkinter.Tk):
         pass
 
     def clear_root(self):
-        if self.file_transcript:
-            self.file_transcript.frame.grid_remove()
+        if self.audio_file_transcript:
+            self.audio_file_transcript.frame.grid_remove()
         if self.record_youtube:
             self.record_youtube.frame.grid_remove()
         if self.live_transcript:
