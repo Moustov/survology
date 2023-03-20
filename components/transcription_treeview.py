@@ -109,6 +109,9 @@ class TranscriptionTreeview(mtkEditTableListener):
         return res
 
     def set_part(self):
+        """
+        adds a part in the transcription at current rowID
+        """
         selected_values = self.transcription_treeview.item(self.transcription_treeview.rowID)
         self.previous_part = self.transcription_treeview.rowID
         values = selected_values.get("values")

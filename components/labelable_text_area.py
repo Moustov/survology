@@ -170,6 +170,8 @@ class LabelableTextArea(LabelableTextAreaListener):
             print("self.labels_treeview.item", str(index), label_name)
             self.labels_treeview.item(str(index), tags=label_name)
             print("tags", self.labels_treeview.item(index)['tags'], self.labels_treeview.item(index)['values'])
+            # assign tag to self.area_text
+            self.area_text.tag_configure(label_name, background=labels_json[label_name]["color"])
             index += 1
 
     def _on_right_click(self, event):
