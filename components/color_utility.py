@@ -3,7 +3,9 @@ import random
 
 def random_color() -> str:
     # forces soft colors (not dark & not too white)
+    random.seed()
     color = "#" + ''.join([random.choice('ABCD') for j in range(6)])
+    print("color", color)
     return color
 
 

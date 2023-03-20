@@ -30,7 +30,7 @@ class LabelableTextArea(LabelableTextAreaListener):
         #     }
         # }
 
-    def add_label_in_text(self):
+    def assign_label_in_text(self):
         selected_text = self.area_text.selection_get()
         print("selected_text", selected_text)
         text = self.area_text.get(1.0, "end-1c")
@@ -50,7 +50,7 @@ class LabelableTextArea(LabelableTextAreaListener):
             # TODO select the right label
             print("here --", beg_pos, text.find(selected_text), line_id, selected_text, f"{line_id}.{beg_pos}",
                   f"{line_id}.{end_pos}")
-            self.area_text.tag_add("here", f"{line_id}.{beg_pos}", f"{line_id}.{end_pos}")
+            self.area_text.tag_add(self.get_current_tag(), f"{line_id}.{beg_pos}", f"{line_id}.{end_pos}")
             self.tags_in_text[f"{line_id}.{beg_pos}"] = {"label": "here", "end": f"{line_id}.{end_pos}",
                                                          "text": selected_text}
             print(f"tags_in_text[{line_id}.{beg_pos}]", self.tags_in_text[f"{line_id}.{beg_pos}"])
@@ -84,8 +84,8 @@ class LabelableTextArea(LabelableTextAreaListener):
         self.local_content_labelframe.grid(row=0, column=2, padx=5, pady=5)
         # right click menu - https://tkdocs.com/tutorial/menus.html
         self.menu = Menu(self.local_frame, tearoff=0)
-        self.menu.add_command(label="Assign tag", command=self.add_label_in_text)
-        self.menu.add_command(label="Assign new tag", command=self.add_label)
+        self.menu.add_command(label="Assign tag", command=self.assign_label_in_text)
+        self.menu.add_command(label="Assign new tag", command=self.add_new_label)
         self.menu.add_separator()
         self.menu.add_command(label="Delete tag", command=self.noop)
         self.area_text.bind("<Button-3>", self._on_right_click)
@@ -94,17 +94,21 @@ class LabelableTextArea(LabelableTextAreaListener):
     def noop(self):
         print("<< did nothing >>")
 
-    def add_label(self):
-        new_label_name = random_color()  # the new name is the color
+    def add_new_label(self):
+        label_color = new_label_name = random_color()  # the new name is the color
         self.tags[new_label_name] = {}
         self.tags[new_label_name]["color"] = new_label_name
-        self.tags[new_label_name]["description"]: f"a description for the label '{new_label_name}'"
-        # add new tag in
-        json = self.labels_treeview.get_data()
-        json[str(len(json.keys()))] = [self.tags[new_label_name], self.tags[new_label_name]["description"],
-                                       self.tags[new_label_name]["color"]]
-        print("new labels", json)
-        self.labels_treeview.set_data(json)
+        self.tags[new_label_name]["description"] = f"a description for the label '{new_label_name}'"
+        print("### self.tags[new_label_name]", self.tags[new_label_name])
+        # add new tag in list
+        new_label_values = [new_label_name, self.tags[new_label_name]["description"],
+                            self.tags[new_label_name]["color"]]
+        self.area_text.tag_configure(new_label_name, background=label_color)
+        # assign tag to row
+        new_iid = self.labels_treeview.insert(parent="", index='end', text="", tags=new_label_name,
+                                              values=tuple(new_label_values))
+        self.labels_treeview.tag_configure(new_label_name, background=label_color)
+        self.assign_label_in_text()
 
     def set_text(self, text: str, row_transcription_labels_json: dict, labels_json: dict):
         """
@@ -167,9 +171,7 @@ class LabelableTextArea(LabelableTextAreaListener):
             print("tag_configure", label_name, labels_json[label_name]["color"])
             self.labels_treeview.tag_configure(label_name, background=labels_json[label_name]["color"])
             # assign tag to row
-            print("self.labels_treeview.item", str(index), label_name)
             self.labels_treeview.item(str(index), tags=label_name)
-            print("tags", self.labels_treeview.item(index)['tags'], self.labels_treeview.item(index)['values'])
             # assign tag to self.area_text
             self.area_text.tag_configure(label_name, background=labels_json[label_name]["color"])
             index += 1
@@ -183,3 +185,11 @@ class LabelableTextArea(LabelableTextAreaListener):
         if self.tags and tag in self.tags.keys():
             return self.tags[tag]["color"]
         raise ValueError(f"the tag {tag} does not exist")
+
+    def get_current_tag(self) -> str:
+        print("get_current_tag selected", self.labels_treeview.rowID)
+        print("get_current_tag data", self.labels_treeview.get_data())
+        row = self.labels_treeview.item(str(self.labels_treeview.rowID))
+        print("get_current_tag row", row)
+        return row["values"][0]
+
