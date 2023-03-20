@@ -49,7 +49,7 @@ class LiveTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.progress_bar = None
         self.queue = queue.Queue()
 
-    def display(self, root: tkinter.Tk):
+    def get_ui_frame(self, root: tkinter.Tk):
         self.frame = Frame(root)
         self.title_label = Label(self.frame, text="Live Transcription")
         self.title_label.pack(padx=5, pady=5)
@@ -59,7 +59,7 @@ class LiveTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.progress_bar = Progressbar(self.frame, orient='horizontal', mode='indeterminate', length=280)
         self.progress_bar.pack(padx=5, pady=5)
         #
-        self.display_transcription_frame()
+        self.get_transcription_frame(self.frame)
         #
         self.labelable_widget = LabelableTextArea(self.frame, self)
         self.labelable_content_labelframe = self.labelable_widget.get_ui_content(self.frame)
@@ -69,9 +69,9 @@ class LiveTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.save_button.pack(padx=5, pady=5)
         return self.frame
 
-    def display_transcription_frame(self):
-        self.transcription_content_widget = TranscriptionTreeview(self.frame)
-        self.transcription_content_labelframe = self.transcription_content_widget.get_transcription_treeview_label_frame(self.frame)
+    def get_transcription_frame(self, frame: Frame):
+        self.transcription_content_widget = TranscriptionTreeview(frame)
+        self.transcription_content_labelframe = self.transcription_content_widget.get_ui_content(frame)      # get_transcription_treeview_label_frame(frame)
         self.sentences = self.transcription_content_widget.transcription_treeview
         self.sentences.bind("<ButtonRelease-1>", self._on_sentence_select)
 

@@ -65,6 +65,18 @@ class LabelableTextArea(LabelableTextAreaListener):
         print("_do_validate_text", text)
         self.listener.set_new_text(text)
         self.listener.set_transcription_labels(self.tags_in_text)
+        # updating self.tags from self.labels_treeview
+        self.tags = {}
+        json = self.labels_treeview.get_data()
+        for rowiid in json.keys():
+            label_name = json[rowiid][0]
+            description = json[rowiid][1]
+            color = json[rowiid][2]
+            self.tags[label_name] = {'color': color, 'description': description}
+        print("$$$$ _do_update_text_in_treeview", json, self.tags)
+        # {'0': ['here', "a description for the label 'here'", '#ABCDAB'],
+        #  'I001': ['#BDCDCC', "a description for the label '#BDCDCC'", '#BDCDCC']}
+        # {'#BDCDCC': {'color': '#BDCDCC', 'description': "a description for the label '#BDCDCC'"}}
         self.listener.set_labels(self.tags)
 
     def get_ui_content(self, frame: Frame) -> LabelFrame:
@@ -148,7 +160,7 @@ class LabelableTextArea(LabelableTextAreaListener):
                                               "end": end_key,
                                               "text": selected_text}
 
-    def set_label_list(self, labels_json: dict):
+    def set_label_list_in_labels_treeview(self, labels_json: dict):
         """
         labeled_text: see (components/transcription_format.json)[components/transcription_format.json]["transcription_labels"]
         labels: see (components/transcription_format.json)[components/transcription_format.json]["labels"]
@@ -191,5 +203,8 @@ class LabelableTextArea(LabelableTextAreaListener):
         print("get_current_tag data", self.labels_treeview.get_data())
         row = self.labels_treeview.item(str(self.labels_treeview.rowID))
         print("get_current_tag row", row)
-        return row["values"][0]
+        if row["values"]:
+            return row["values"][0]
+        else:
+            raise ValueError("No tag currently selected")
 

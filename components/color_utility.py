@@ -1,9 +1,10 @@
 import random
+from datetime import datetime
 
 
 def random_color() -> str:
     # forces soft colors (not dark & not too white)
-    random.seed()
+    random.seed(datetime.now().timestamp())
     color = "#" + ''.join([random.choice('ABCD') for j in range(6)])
     print("color", color)
     return color

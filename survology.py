@@ -68,7 +68,7 @@ class SurvologyRootWindow(tkinter.Tk):
     def do_live_transcription(self):
         self.clear_root()
         self.live_transcript = LiveTranscript()
-        frame = self.live_transcript.display(self)
+        frame = self.live_transcript.get_ui_frame(self)
         frame.grid(row=1, column=0, columnspan=5, sticky='nsew', padx=5, pady=5)
 
     def do_transcript_record(self):

@@ -182,7 +182,7 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
                 self.json_parts_colors = transcription_file_content_json["parts_colors"]
                 self.json_transcription_labels = transcription_file_content_json["transcription_labels"]
                 self.json_labels = transcription_file_content_json["labels"]
-                self.labelable_widget.set_label_list(self.json_labels)
+                self.labelable_widget.set_label_list_in_labels_treeview(self.json_labels)
                 self.labelable_widget.set_text("", {},
                                                self.json_labels)
 
