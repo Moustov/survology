@@ -1,0 +1,37 @@
+{
+  "FILE_FORMAT": "1.0",
+  "transcription": {
+    "0": [
+      "00:00:01",
+      "en août"
+    ],
+    "1": [
+      "00:00:03",
+      "je me suis rendue dans des orphelinats roi de la ligne de front"
+    ],
+    "2": [
+      "00:00:07",
+      "avec les enfants sont déportés d'ukraine et en russie"
+    ],
+    "3": [
+      "00:00:16",
+      "nous devons absolument enquêter fermement pour trouver des preuves de ces crimes alex stop"
+    ]
+  },
+  "parts_colors": {},
+    "transcription_labels": {
+        "49": {
+            "1.202": {
+                "label": "here",
+                "end": "1.212",
+                "text": "cosmologie"
+            }
+        }
+    },
+    "labels": {
+        "here": {
+            "color": "#ABCDAB",
+            "description": "a description for the label 'here'"
+        }
+    }
+}

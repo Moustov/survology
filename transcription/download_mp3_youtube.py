@@ -1,16 +1,16 @@
+import os
 import threading
 import tkinter
-from tkinter import Label, Entry, Button, END, Frame
+from tkinter import Label, Entry, Button, Frame
 from tkinter.ttk import Progressbar
 
 from moviepy.audio.io.AudioFileClip import AudioFileClip
-from moviepy.video.io.VideoFileClip import VideoFileClip
 from pytube import YouTube
-import os
 
 
 class DownloadMP3Youtube(tkinter.Tk):
     def __init__(self):
+        super().__init__()
         self.list_of_songs = None
         self.song = None
         self.youtube_url = None
@@ -56,8 +56,8 @@ class DownloadMP3Youtube(tkinter.Tk):
             audio.write_audiofile(new_file)
             audio.close()
             os.remove(out_file)
-        # result of success
-        print(yt.title + " has been successfully downloaded.")
-        print("Download complete... {}".format(new_file))
+            # result of success
+            print(yt.title + " has been successfully downloaded.")
+            print("Download complete... {}".format(new_file))
         self.progress_bar.stop()
 

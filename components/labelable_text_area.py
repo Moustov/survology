@@ -2,8 +2,6 @@
 from tkinter import Frame, Text, LabelFrame, Menu, Button
 from tkinter.constants import *
 
-from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable
-
 from components.color_utility import random_color
 from components.labelable_text_area_listener import LabelableTextAreaListener
 from components.labels_treeview import LabelTreeview

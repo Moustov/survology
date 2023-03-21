@@ -1,7 +1,6 @@
-import json
-import os
 from tkinter import LabelFrame, Scrollbar, Frame
 from tkinter.constants import *
+
 from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable, mtkEditTableListener
 
 from components.color_utility import random_color
@@ -120,7 +119,8 @@ class TranscriptionTreeview(mtkEditTableListener):
         color = random_color()
         print(part_name, color)
         self.transcription_treeview.tag_configure(part_name, background=color)
-        self.transcription_treeview.item(self.transcription_treeview.rowID, text=part_name, values=values, tags=part_name)
+        self.transcription_treeview.item(self.transcription_treeview.rowID, text=part_name,
+                                         values=values, tags=part_name)
 
     def get_data(self) -> dict:
         return self.transcription_treeview.get_data()
@@ -174,12 +174,3 @@ class TranscriptionTreeview(mtkEditTableListener):
                 self.transcription_treeview.item(str(i), tags=text)
                 for j in self.transcription_treeview.get_children(str(i)):
                     self.transcription_treeview.item(str(j), tags=text)
-
-    def get_parts_colors(self) -> dict:
-        return {}
-
-    def get_transcription_labels(self) -> dict:
-        return {}
-
-    def get_labels(self) -> dict:
-        return {}

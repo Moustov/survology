@@ -1,10 +1,7 @@
-import json
-import os
 from tkinter import LabelFrame, Scrollbar, Frame
 from tkinter.constants import *
-from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable, mtkEditTableListener
 
-from components.color_utility import random_color
+from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable, mtkEditTableListener
 
 
 class LabelTreeview(mtkEditTableListener):
