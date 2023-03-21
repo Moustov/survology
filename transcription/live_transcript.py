@@ -1,4 +1,5 @@
 import os
+from functools import partial
 
 import numpy
 import argparse
@@ -9,7 +10,7 @@ import threading
 import time
 import tkinter
 from datetime import datetime
-from tkinter import Text, Label, Button, Frame, LabelFrame, Scrollbar
+from tkinter import Text, Label, Button, Frame, LabelFrame, Scrollbar, Tk
 from tkinter.constants import *
 from tkinter.ttk import Progressbar
 
@@ -29,6 +30,10 @@ from components.transcription_treeview import TranscriptionTreeview
 
 class LiveTranscript(tkinter.Tk, LabelableTextAreaListener):
     def __init__(self):
+        self.close_row = True
+        self.current_rowID = None
+        self.labelable_content_labelframe = None
+        self.labelable_widget = None
         self.transcription_content_widget = None
         self.horscrlbar = None
         self.verscrlbar = None
@@ -49,7 +54,7 @@ class LiveTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.progress_bar = None
         self.queue = queue.Queue()
 
-    def get_ui_frame(self, root: tkinter.Tk):
+    def get_ui_frame(self, root: tkinter.Tk) -> Frame:
         self.frame = Frame(root)
         self.title_label = Label(self.frame, text="Live Transcription")
         self.title_label.pack(padx=5, pady=5)
@@ -59,7 +64,8 @@ class LiveTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.progress_bar = Progressbar(self.frame, orient='horizontal', mode='indeterminate', length=280)
         self.progress_bar.pack(padx=5, pady=5)
         #
-        self.get_transcription_frame(self.frame)
+        self.transcription_content_labelframe = self.get_transcription_frame(self.frame)
+        self.transcription_content_labelframe.pack(padx=5, pady=5)
         #
         self.labelable_widget = LabelableTextArea(self.frame, self)
         self.labelable_content_labelframe = self.labelable_widget.get_ui_content(self.frame)
@@ -69,11 +75,12 @@ class LiveTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.save_button.pack(padx=5, pady=5)
         return self.frame
 
-    def get_transcription_frame(self, frame: Frame):
+    def get_transcription_frame(self, frame: Frame) -> LabelFrame:
         self.transcription_content_widget = TranscriptionTreeview(frame)
-        self.transcription_content_labelframe = self.transcription_content_widget.get_ui_content(frame)      # get_transcription_treeview_label_frame(frame)
+        self.transcription_content_labelframe = self.transcription_content_widget.get_ui_content(frame)
         self.sentences = self.transcription_content_widget.transcription_treeview
         self.sentences.bind("<ButtonRelease-1>", self._on_sentence_select)
+        return self.transcription_content_labelframe
 
     def _do_stop_transcription(self):
         self.capturing = False
@@ -98,6 +105,7 @@ class LiveTranscript(tkinter.Tk, LabelableTextAreaListener):
         os.remove(f"{self.file_name}.WAV")
 
     def _on_sentence_select(self, event):
+        # todo self.transcription_text is not initialized
         item = self.sentences.item(self.sentences.selection())['values']
         self.transcription_text.delete('1.0', END)
         self.transcription_text.insert('end', f"{item[1]}")
@@ -176,25 +184,63 @@ class LiveTranscript(tkinter.Tk, LabelableTextAreaListener):
                         txt = json.loads(rec.Result())
                         if txt['text'] != "":
                             formatted_timecode = time.strftime("%H:%M:%S", time.gmtime(timecode_sec))
-                            row_id = self.sentences.insert(parent="", index='end', iid=index, text="",
-                                                           values=(str(formatted_timecode), txt['text']))
-                            self.sentences.see(index)   # ensure new line is visible
-                            self.sentences.selection_set(row_id)
-                            index += 1
+                            self.update_transcription_thread((str(formatted_timecode), txt['text'], ""))
+                            self.close_row = True
                     else:
                         partial = json.loads(rec.PartialResult())
                         if partial["partial"] == "":
                             chrono = datetime.now()
                             timecode_sec = (chrono - start_time).seconds
-                        print(formatted_timecode, partial)
+                        print(formatted_timecode,
+                              str(time.strftime("%H:%M:%S", time.gmtime(timecode_sec))),
+                              partial)
+                        if self.close_row:
+                            self.add_transcription_thread((str(time.strftime("%H:%M:%S",
+                                                                             time.gmtime(
+                                                                                 timecode_sec))),
+                                                           partial["partial"],
+                                                           ""))
+                            self.close_row = False
+                        else:
+                            self.update_transcription_thread((str(time.strftime("%H:%M:%S",
+                                                                                time.gmtime(
+                                                                                    timecode_sec))),
+                                                              partial["partial"],
+                                                              ""))
         #
         except KeyboardInterrupt:
             print("\nDone")
             parser.exit(0)
         except Exception as e:
-            parser.exit(type(e).__name__ + ": " + str(e))
+            print(type(e).__name__ + ": " + str(e))
+            parser.exit(1)
         self.progress_bar.stop()
         self._save_transcription()
+
+    def add_transcription_thread(self, values: tuple):
+        listen_thread = threading.Thread(target=partial(self._do_add_transcription, values), name="_do_add_transcription")
+        listen_thread.start()
+
+    def _do_add_transcription(self, values: tuple):
+        index = self.sentences.insert(parent="", index='end', text="", values=values)
+        print("row added", index, values)
+        self.current_rowID = index
+        self.sentences.see(self.current_rowID)  # ensure new line is visible
+        self.sentences.selection_set(self.current_rowID)
+        Tk.update(self.frame)
+
+    def update_transcription_thread(self, values: tuple):
+        listen_thread = threading.Thread(target=partial(self._do_update_transcription, values), name="_do_update_transcription")
+        listen_thread.start()
+
+    def _do_update_transcription(self, values: tuple):
+        print("updating row", self.current_rowID, values)
+        if self.current_rowID:
+            self.sentences.item(self.current_rowID, text="", values=values)
+        else:
+            self._do_add_transcription(values)
+        print("row updated", self.current_rowID, values)
+        Tk.update(self.frame)
 
 
 def int_or_str(text):
