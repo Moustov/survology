@@ -176,16 +176,21 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.transcription_file_text = self.transcription_store.get_json_file_name()
         if self.debug:
             print(self.transcription_file_text)
-        if os.path.exists(self.transcription_file_text):
-            self.transcription_store.load()
+        try:
+            self.transcription_store.load(self.file_to_transcript)
             self.transcription_content_widget.set_data(self.transcription_store.get_transcription_data())
             self.set_labels(self.transcription_store.get_labels_data())
             # self.set_transcription_labels(self.transcription_store.get_transcription_labels_data())
-            self.set_part_colors(self.transcription_store.get_parts_colors())
+            self.set_part_colors()
             self.time_line = self.transcription_content_widget.get_timeline()
-        else:
+        except TranscriptionStoreException:
+            if self.debug:
+                print("Format error")
+            return
+        except FileExistsError:
             if self.debug:
                 print("No existing transcription found")
+            return
         self.duration = get_media_duration(self.file_to_transcript)
         self.duration_text.set("duration: " + time_code_to_chrono(self.duration))
         self.player_slider_scale.configure(to=self.duration)
@@ -301,12 +306,13 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         values[1] = text
         self.transcription_treeview.item(self.transcription_treeview.rowID, values=values)
 
-    def set_part_colors(self, part_colors: dict):
+    def set_part_colors(self):
         """
         set the new labels
         """
-        self.transcription_store.json_parts_colors = part_colors
-        print("aft set_parts_colors", self.transcription_store.json_parts_colors)
+        parts = self.transcription_store.get_parts_colors()
+        for part_key in parts.keys():
+            self.transcription_treeview.tag_configure(part_key, background=parts[part_key]["color"])
 
     def set_labels(self, labels: dict):
         """

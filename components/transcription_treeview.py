@@ -161,7 +161,6 @@ class TranscriptionTreeview(mtkEditTableListener):
             }
         }
         """
-
         print("ttv set_data", transcription)
         self.transcription_treeview.set_data(transcription)
         for i in self.transcription_treeview.get_children():

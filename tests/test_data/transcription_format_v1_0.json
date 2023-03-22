@@ -19,7 +19,7 @@
     ]
   },
   "parts_colors": {},
-    "transcription_labels": {
+  "transcription_labels": {
         "49": {
             "1.202": {
                 "label": "here",
@@ -27,11 +27,11 @@
                 "text": "cosmologie"
             }
         }
-    },
-    "labels": {
+  },
+  "labels": {
         "here": {
             "color": "#ABCDAB",
             "description": "a description for the label 'here'"
         }
-    }
+  }
 }

@@ -11,10 +11,11 @@ class TranscriptionStoreException(Exception):
 
 class TranscriptionStore:
     FILE_FORMAT = "1.0"
-    TRANSCRIPTIONS_PATH = "audio samples"
 
     def __init__(self, transcription_name: str):
-        self.transcription_name = transcription_name
+        self.transcriptions_path = "audio samples"
+        # todo replace all forbidden chars https://www.mtu.edu/umc/services/websites/writing/characters-avoid/
+        self.transcription_name = transcription_name.replace(':', "_")
         self.file_format = ""
         self.json_parts_colors = {}
         self.json_transcription = {}
@@ -22,34 +23,51 @@ class TranscriptionStore:
         self.json_transcription_labels = {}
 
     def get_audio_file_name(self) -> str:
-        # todo replace all forbidden chars https://www.mtu.edu/umc/services/websites/writing/characters-avoid/
-        res = f"{TranscriptionStore.TRANSCRIPTIONS_PATH}/{self.transcription_name}.mp3".replace(":", "_")
+        res = f"{self.transcriptions_path}/{self.transcription_name}.mp3"
         print("get_audio_file_name", res)
         return res
 
     def get_json_file_name(self) -> str:
         # todo replace all forbidden chars https://www.mtu.edu/umc/services/websites/writing/characters-avoid/
-        res = f"{TranscriptionStore.TRANSCRIPTIONS_PATH}/{self.transcription_name}.json".replace(":", "_")
+        res = f"{self.transcriptions_path}/{self.transcription_name}.json"
         print("get_json_file_name", res)
         return res
 
-    def load(self, file_name: str = None):
+    def load(self, file_name: str = None, with_audio_file: bool = True):
         """
         loads a json file and feeds the transcription data enclosed
         todo: handle backward compatibility
         """
         if file_name is None:
             file_name = self.get_json_file_name()
+        else:
+            file_path, file_extension = os.path.splitext(file_name)
+            if file_extension.lower() != ".mp3" and with_audio_file:
+                raise TranscriptionStoreException("Only MP3 files are taken into account")
+            path_parts = file_path.split("/")
+            self.transcriptions_path = "/".join(path_parts[:-1])
+            print("transcriptions_path", self.transcriptions_path)
+            transcription_name = path_parts[len(path_parts) - 1]
+            print("transcription_name", transcription_name)
+            self.transcription_name = transcription_name
+            file_name = self.get_json_file_name()
+
+        print("load", file_name)
         if os.path.exists(file_name):
             with open(file_name, "r", encoding='utf-8') as json_file:
+                print("load", file_name)
                 transcription_file_content_json = json.load(json_file)
                 if TranscriptionStore.is_json_format_v_1_0(transcription_file_content_json):
                     self.file_format = transcription_file_content_json["FILE_FORMAT"]
-                    self.json_transcription = transcription_file_content_json["transcription"]
-                    self.json_transcription = self.format_json_transcription(self.json_transcription)
-                    self.json_parts_colors = transcription_file_content_json["parts_colors"]
-                    self.json_transcription_labels = transcription_file_content_json["transcription_labels"]
-                    self.json_labels = transcription_file_content_json["labels"]
+                    json_transcription = transcription_file_content_json["transcription"]
+                    self.set_transcription_data(self.format_json_transcription(json_transcription))
+                    print("load.json_transcription", self.json_transcription)
+                    self.set_parts_colors(transcription_file_content_json["parts_colors"])
+                    print("load.json_parts_colors", self.json_parts_colors)
+                    self.set_transcription_labels_data(transcription_file_content_json["transcription_labels"])
+                    print("load.json_transcription_labels", self.json_transcription_labels)
+                    self.set_labels_data(transcription_file_content_json["labels"])
+                    print("load.json_labels", self.json_labels)
                 else:  # todo add previous formats for retro compatibility
                     raise TranscriptionStoreException(f"The file {file_name} does not comply "
                                                       f"with format {TranscriptionStore.FILE_FORMAT}")
@@ -207,6 +225,8 @@ class TranscriptionStore:
                 if not (len(transcription[row_key]) in [2, 3]):
                     print("2-3 items expected in transcription[row][]")
                     return False
+            elif type(transcription[row_key]) == dict:
+                return TranscriptionStore.is_transcription_format_ok(transcription[row_key])
             else:
                 return False
         return True
@@ -225,7 +245,7 @@ class TranscriptionStore:
         for tag_key in parts_colors.keys():
             if not ("color" in parts_colors[tag_key].keys()):
                 return False
-            if not ("description" in parts_colors[tag_key][tag_key].keys()):
+            if not ("description" in parts_colors[tag_key].keys()):
                 return False
         return True
 
