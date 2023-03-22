@@ -8,7 +8,7 @@ import time
 import tkinter
 from datetime import datetime
 from functools import partial
-from tkinter import Label, Button, Frame, LabelFrame, Tk
+from tkinter import Label, Button, Frame, LabelFrame, Tk, Entry, StringVar
 from tkinter.constants import *
 from tkinter.ttk import Progressbar
 
@@ -31,6 +31,8 @@ from components.transcription_treeview import TranscriptionTreeview
 class LiveTranscript(tkinter.Tk, LabelableTextAreaListener):
     def __init__(self):
         super().__init__()
+        self.transcription_name = None
+        self.file_name_entry = None
         self.close_row = True
         self.current_rowID = None
         self.labelable_content_labelframe = None
@@ -54,7 +56,8 @@ class LiveTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.listen_button = None
         self.progress_bar = None
         self.queue = queue.Queue()
-        self.transcription_store = TranscriptionStore()
+        self.file_name_entryvar = StringVar(value="transcription_" + str(datetime.now()))
+        self.transcription_store = TranscriptionStore(self.file_name_entryvar.get())
 
     def get_ui_frame(self, root: tkinter.Tk) -> Frame:
         self.frame = Frame(root)
@@ -73,6 +76,9 @@ class LiveTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.labelable_content_labelframe = self.labelable_widget.get_ui_content(self.frame)
         self.labelable_content_labelframe.pack(fill=BOTH, expand=1)
         #
+        self.file_name_entry = Entry(self.frame, textvariable=self.file_name_entryvar)
+        self.file_name_entry.pack(padx=5, pady=5)
+
         self.save_button = Button(self.frame, text='Stop & Save transcription', command=self._do_stop_transcription)
         self.save_button.pack(padx=5, pady=5)
         return self.frame
@@ -88,26 +94,26 @@ class LiveTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.capturing = False
 
     def _save_transcription(self):
-        if not self.file_name:
-            self.file_name = "audio samples/" + str(datetime.now())
-            self.file_name = self.file_name.replace(':', '-') + ".json"
-        #
+        self.transcription_name = self.file_name_entryvar.get()
+        self.transcription_store.transcription_name = self.transcription_name
         transcription = self.transcription_treeview.get_data()
         transcription_content = {"transcription": transcription, "parts_colors": {},
                                  "transcription_labels": {}, "labels": {}}
         self.transcription_store.set_transcription_data(transcription_content["transcription"])
         self.transcription_store.set_transcription_labels_data(transcription_content["transcription_labels"])
-        self.transcription_store.set_transcription_labels_data(transcription_content["transcription_labels"])
-        self.transcription_store.save(self.file_name)
-        # save WAV
-        print("saving:", f"{self.file_name}.WAV", 'x', self.samplerate, sf.default_subtype("WAV"))
-        with sf.SoundFile(f"{self.file_name}.WAV", mode='x', samplerate=self.samplerate,
+        self.transcription_store.set_labels_data(transcription_content["labels"])
+        self.transcription_store.save()
+        # save WAV (temp file)
+        print("saving:", f"{self.transcription_store.get_audio_file_name()}.WAV", 'x',
+              self.samplerate, sf.default_subtype("WAV"))
+        with sf.SoundFile(f"{self.transcription_store.get_audio_file_name()}.WAV", mode='x', samplerate=self.samplerate,
                           channels=self.NUMBER_CHANNELS, subtype="PCM_16") as file:
             file.write(self.whole_record)
         # transform into MP3
-        data, fs = sf.read(f"{self.file_name}.WAV")
-        sf.write(f"{self.file_name}.MP3", data, fs)
-        os.remove(f"{self.file_name}.WAV")
+        data, fs = sf.read(f"{self.transcription_store.get_audio_file_name()}.WAV")
+        sf.write(self.transcription_store.get_audio_file_name(), data, fs)
+        # remove temp file
+        os.remove(f"{self.transcription_store.get_audio_file_name()}.WAV")
 
     def _on_transcription_select_row(self, event):
         tree = event.widget

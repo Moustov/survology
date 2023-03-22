@@ -162,8 +162,8 @@ class TranscriptionTreeview(mtkEditTableListener):
         }
         """
 
-        print("ttv set_data", transcription["transcription"])
-        self.transcription_treeview.set_data(transcription["transcription"])
+        print("ttv set_data", transcription)
+        self.transcription_treeview.set_data(transcription)
         for i in self.transcription_treeview.get_children():
             print("===", i)
             text = self.transcription_treeview.item(str(i))['text'].replace(" ", "")

@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 import os
 import subprocess
@@ -17,7 +18,7 @@ from vosk import Model, KaldiRecognizer, SetLogLevel
 # https://stackoverflow.com/questions/73089784/problem-mixer-music-get-pos-after-set-position-by-mixer-music-set-pos
 from components.labelable_text_area import LabelableTextArea
 from components.labelable_text_area_listener import LabelableTextAreaListener
-from components.transcription_store import TranscriptionStore
+from components.transcription_store import TranscriptionStore, TranscriptionStoreException
 from components.transcription_treeview import TranscriptionTreeview
 
 
@@ -119,7 +120,7 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.file_to_transcript = None
         self.time_line = None
         self.transcription_file_text = None
-        self.transcription_store = TranscriptionStore()
+        self.transcription_store = TranscriptionStore("transcription_" + str(datetime.now()))
         # sound
         SetLogLevel(0)
         self.sound = None
@@ -156,20 +157,31 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         listen_thread.start()
 
     def _do_save_transcription(self):
-        self.transcription_store.save(f"{self.file_to_transcript}.json")
+        self.transcription_store.save()
 
     def _do_transcription_freeze(self):
         self.carry_on = False
 
     def _do_load_audio_file(self):
         self.file_to_transcript = askopenfilename(title="Choose the file to open",
-                                                  filetypes=[("MP3", ".mp3"), ("WAV", ".wav"), ("All files", ".*")])
+                                                  filetypes=[("MP3", ".mp3"), ("All files", ".*")])
         self.audio_file_text.set("file: " + self.file_to_transcript)
-        self.transcription_file_text = self.file_to_transcript + ".json"
+        file_path, file_extension = os.path.splitext(self.file_to_transcript)
+        if file_extension.lower() != ".mp3":
+            raise TranscriptionStoreException("Only MP3 files are taken into account")
+        path_parts = file_path.split("/")
+        transcription_name = path_parts[len(path_parts) - 1]
+        print("transcription_name", transcription_name)
+        self.transcription_store.transcription_name = transcription_name
+        self.transcription_file_text = self.transcription_store.get_json_file_name()
         if self.debug:
             print(self.transcription_file_text)
         if os.path.exists(self.transcription_file_text):
-            self.transcription_store.load(self.transcription_file_text)
+            self.transcription_store.load()
+            self.transcription_content_widget.set_data(self.transcription_store.get_transcription_data())
+            self.set_labels(self.transcription_store.get_labels_data())
+            # self.set_transcription_labels(self.transcription_store.get_transcription_labels_data())
+            self.set_part_colors(self.transcription_store.get_parts_colors())
             self.time_line = self.transcription_content_widget.get_timeline()
         else:
             if self.debug:
@@ -288,6 +300,13 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         values = self.transcription_treeview.item(self.transcription_treeview.rowID)['values']
         values[1] = text
         self.transcription_treeview.item(self.transcription_treeview.rowID, values=values)
+
+    def set_part_colors(self, part_colors: dict):
+        """
+        set the new labels
+        """
+        self.transcription_store.json_parts_colors = part_colors
+        print("aft set_parts_colors", self.transcription_store.json_parts_colors)
 
     def set_labels(self, labels: dict):
         """

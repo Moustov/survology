@@ -11,19 +11,35 @@ class TranscriptionStoreException(Exception):
 
 class TranscriptionStore:
     FILE_FORMAT = "1.0"
+    TRANSCRIPTIONS_PATH = "audio samples"
 
-    def __init__(self):
+    def __init__(self, transcription_name: str):
+        self.transcription_name = transcription_name
         self.file_format = ""
         self.json_parts_colors = {}
         self.json_transcription = {}
         self.json_labels = {}
         self.json_transcription_labels = {}
 
-    def load(self, file_name: str):
+    def get_audio_file_name(self) -> str:
+        # todo replace all forbidden chars https://www.mtu.edu/umc/services/websites/writing/characters-avoid/
+        res = f"{TranscriptionStore.TRANSCRIPTIONS_PATH}/{self.transcription_name}.mp3".replace(":", "_")
+        print("get_audio_file_name", res)
+        return res
+
+    def get_json_file_name(self) -> str:
+        # todo replace all forbidden chars https://www.mtu.edu/umc/services/websites/writing/characters-avoid/
+        res = f"{TranscriptionStore.TRANSCRIPTIONS_PATH}/{self.transcription_name}.json".replace(":", "_")
+        print("get_json_file_name", res)
+        return res
+
+    def load(self, file_name: str = None):
         """
         loads a json file and feeds the transcription data enclosed
         todo: handle backward compatibility
         """
+        if file_name is None:
+            file_name = self.get_json_file_name()
         if os.path.exists(file_name):
             with open(file_name, "r", encoding='utf-8') as json_file:
                 transcription_file_content_json = json.load(json_file)
@@ -40,11 +56,13 @@ class TranscriptionStore:
         else:
             raise FileExistsError(f"The file {file_name} does not exist")
 
-    def save(self, transcription_file_name: str, transcription: dict = None, parts_colors: dict = None,
+    def save(self, transcription_file_name: str = None, transcription: dict = None, parts_colors: dict = None,
              labels: dict = None, transcription_labels: dict = None):
         """
         saves the transcription data into a json file
         """
+        if transcription_file_name is None:
+            transcription_file_name = self.get_json_file_name()
         if transcription is None:
             self.json_transcription = self.format_json_transcription(self.json_transcription)
             transcription = self.json_transcription
@@ -62,15 +80,14 @@ class TranscriptionStore:
             transcription_labels = self.json_transcription_labels
         else:
             self.json_transcription_labels = transcription_labels
-        file_name = f"{transcription_file_name}"
         transcription_content = {"FILE_FORMAT": self.FILE_FORMAT,
                                  "transcription": transcription,
                                  "parts_colors": parts_colors,
                                  "transcription_labels": transcription_labels, "labels": labels
                                  }
-        with open(file_name, "w", encoding='utf-8') as file:
+        with open(transcription_file_name, "w", encoding='utf-8') as file:
             json.dump(transcription_content, file, indent=4, ensure_ascii=False)
-        print(f"Saved to {file_name}")
+        print(f"Saved to {transcription_file_name}")
 
     @staticmethod
     def is_file_format_v1_0(file_name: str) -> bool:
@@ -78,9 +95,9 @@ class TranscriptionStore:
         returns True if the file_name is compliant with FILE_FORMAT = "1.0"
         """
         if os.path.exists(file_name):
-            with open(file_name, "r", encoding='utf-8') as file:
+            with open(file_name, "r", encoding='utf-8') as file_desc:
                 try:
-                    json_file = json.load(file)
+                    json_file = json.load(file_desc)
                 except JSONDecodeError as err:
                     return False
                 return TranscriptionStore.is_json_format_v_1_0(json_file)
