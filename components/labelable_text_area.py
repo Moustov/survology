@@ -104,11 +104,18 @@ class LabelableTextArea(LabelableTextAreaListener):
     def noop(self):
         print("<< did nothing >>")
 
-    def add_new_label(self):
-        label_color = new_label_name = random_color()  # the new name is the color
-        self.tags[new_label_name] = {}
-        self.tags[new_label_name]["color"] = new_label_name
-        self.tags[new_label_name]["description"] = f"a description for the label '{new_label_name}'"
+    def add_new_label(self, new_label_name: str = None, new_color: str = None, new_description: str = None):
+        label_color = None
+        if new_label_name is None:
+            label_color = new_label_name = random_color()  # the new name is the color
+            self.tags[new_label_name] = {}
+            self.tags[new_label_name]["color"] = new_label_name
+            self.tags[new_label_name]["description"] = f"a description for the label '{new_label_name}'"
+        else:
+            label_color = new_color
+            self.tags[new_label_name] = {}
+            self.tags[new_label_name]["color"] = new_color
+            self.tags[new_label_name]["description"] = new_description
         print("### self.tags[new_label_name]", self.tags[new_label_name])
         # add new tag in list
         new_label_values = [new_label_name, self.tags[new_label_name]["description"],
