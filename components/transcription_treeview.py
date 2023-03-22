@@ -6,8 +6,16 @@ from moustovtkwidgets_lib.mtk_edit_table import mtkEditTable, mtkEditTableListen
 from components.color_utility import random_color
 
 
+class TranscriptionTreeViewListener:
+    def add_part_color(self, part_name: str, color: str):
+        """
+        invoked by the TranscriptionTreeView when a part is added
+        """
+        pass
+
+
 class TranscriptionTreeview(mtkEditTableListener):
-    def __init__(self, frame: Frame):
+    def __init__(self, frame: Frame, listener: TranscriptionTreeViewListener):
         self.part_number = 0
         self.frame = frame
         self.horscrlbar = None
@@ -16,6 +24,7 @@ class TranscriptionTreeview(mtkEditTableListener):
         self.transcription_content_labelframe = None
         self.local_frame = None
         self.previous_part = None
+        self.listener = listener
 
     def get_transcription_treeview_label_frame(self, frame: Frame) -> LabelFrame:
         """
@@ -118,6 +127,8 @@ class TranscriptionTreeview(mtkEditTableListener):
         part_name = f"Part#{self.part_number}".replace(" ", "")
         color = random_color()
         print(part_name, color)
+        if self.listener:
+            self.listener.add_part_color(part_name, color)
         self.transcription_treeview.tag_configure(part_name, background=color)
         self.transcription_treeview.item(self.transcription_treeview.rowID, text=part_name,
                                          values=values, tags=part_name)

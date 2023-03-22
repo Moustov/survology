@@ -25,10 +25,10 @@ from vosk import Model, KaldiRecognizer
 from components.labelable_text_area import LabelableTextArea
 from components.labelable_text_area_listener import LabelableTextAreaListener
 from components.transcription_store import TranscriptionStore
-from components.transcription_treeview import TranscriptionTreeview
+from components.transcription_treeview import TranscriptionTreeview, TranscriptionTreeViewListener
 
 
-class LiveTranscript(tkinter.Tk, LabelableTextAreaListener):
+class LiveTranscript(tkinter.Tk, LabelableTextAreaListener, TranscriptionTreeViewListener):
     def __init__(self):
         super().__init__()
         self.transcription_name = None
@@ -84,7 +84,7 @@ class LiveTranscript(tkinter.Tk, LabelableTextAreaListener):
         return self.frame
 
     def get_transcription_frame(self, frame: Frame) -> LabelFrame:
-        self.transcription_content_widget = TranscriptionTreeview(frame)
+        self.transcription_content_widget = TranscriptionTreeview(frame, self)
         self.transcription_content_labelframe = self.transcription_content_widget.get_ui_content(frame)
         self.transcription_treeview = self.transcription_content_widget.transcription_treeview
         self.transcription_treeview.bind("<ButtonRelease-1>", self._on_transcription_select_row)

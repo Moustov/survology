@@ -101,7 +101,8 @@ class TranscriptionStore:
         transcription_content = {"FILE_FORMAT": self.FILE_FORMAT,
                                  "transcription": transcription,
                                  "parts_colors": parts_colors,
-                                 "transcription_labels": transcription_labels, "labels": labels
+                                 "transcription_labels": transcription_labels,
+                                 "labels": labels
                                  }
         with open(transcription_file_name, "w", encoding='utf-8') as file:
             json.dump(transcription_content, file, indent=4, ensure_ascii=False)
@@ -195,7 +196,7 @@ class TranscriptionStore:
 
     def get_transcription_labels_data(self) -> dict:
         if self.is_transcription_label_format_ok(self.json_transcription_labels):
-            res = deepcopy(self.json_labels)
+            res = deepcopy(self.json_transcription_labels)
             return res
         else:
             raise ValueError(f"The internal data do not comply with format {self.FILE_FORMAT}")
@@ -233,6 +234,7 @@ class TranscriptionStore:
 
     @staticmethod
     def is_labels_format_ok(labels: dict):
+        print("is_labels_format_ok", labels)
         for tag in labels.keys():
             if not ("color" in labels[tag].keys()):
                 return False

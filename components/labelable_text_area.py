@@ -9,6 +9,7 @@ from components.labels_treeview import LabelTreeview
 
 class LabelableTextArea(LabelableTextAreaListener):
     def __init__(self, frame: Frame, listener: LabelableTextAreaListener):
+        self.parts_colors = None
         self.labels_treeview = None
         self.labels_content_widget = None
         self.validate_text_button = None
@@ -28,6 +29,15 @@ class LabelableTextArea(LabelableTextAreaListener):
         #     }
         # }
 
+    def add_part_color(self, part_name: str, color: str):
+        """
+        invoked by the TranscriptionTreeView when a part is added
+        """
+        if self.parts_colors is None:
+            self.parts_colors = {}
+        self.parts_colors[part_name] = {"color": color, "description": "no description"}
+        self.transcription_store.set_parts_colors(self.parts_colors)
+        
     def assign_label_in_text(self):
         selected_text = self.area_text.selection_get()
         print("selected_text", selected_text)

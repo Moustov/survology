@@ -19,7 +19,7 @@ from vosk import Model, KaldiRecognizer, SetLogLevel
 from components.labelable_text_area import LabelableTextArea
 from components.labelable_text_area_listener import LabelableTextAreaListener
 from components.transcription_store import TranscriptionStore, TranscriptionStoreException
-from components.transcription_treeview import TranscriptionTreeview
+from components.transcription_treeview import TranscriptionTreeview, TranscriptionTreeViewListener
 
 
 def time_code_to_chrono(timecode: float) -> str:
@@ -63,7 +63,7 @@ def get_media_duration(file: str) -> float:
             return res
 
 
-class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
+class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener, TranscriptionTreeViewListener):
     PROGRESS_BAR_ROW_POSTION = 2
     model = Model(lang="fr")
     SAMPLE_RATE = 16000
@@ -121,6 +121,7 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.time_line = None
         self.transcription_file_text = None
         self.transcription_store = TranscriptionStore("transcription_" + str(datetime.now()))
+        self.parts_colors = None
         # sound
         SetLogLevel(0)
         self.sound = None
@@ -157,12 +158,30 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         listen_thread.start()
 
     def _do_save_transcription(self):
+        # fetch data from UI
+        self.transcription_store.set_transcription_data(self.transcription_treeview.get_data())
+        #
+        tab_labels = self.labels_treeview.get_data()
+        json_labels = {}
+        for part_key in tab_labels.keys():
+            json_labels[part_key] = {"color": tab_labels[part_key][2],
+                                     "description": tab_labels[part_key][1]}
+        self.transcription_store.set_labels_data(json_labels)
+        # todo self.transcription_store.set_transcription_labels_data({})
+        parts = self.get_parts_colors_from_transcription_treeview()
+        print("parts", parts)
+        json_parts_colors = {}
+        for part_key in parts.keys():
+            json_parts_colors[part_key] = {"color": parts[part_key][2],
+                                           "description": parts[part_key][1]}
+        self.transcription_store.set_parts_colors(json_parts_colors)
         self.transcription_store.save()
 
     def _do_transcription_freeze(self):
         self.carry_on = False
 
     def _do_load_audio_file(self):
+        # get a file name to load
         self.file_to_transcript = askopenfilename(title="Choose the file to open",
                                                   filetypes=[("MP3", ".mp3"), ("All files", ".*")])
         self.audio_file_text.set("file: " + self.file_to_transcript)
@@ -176,12 +195,14 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         self.transcription_file_text = self.transcription_store.get_json_file_name()
         if self.debug:
             print(self.transcription_file_text)
+        # load json file and fill UI
         try:
             self.transcription_store.load(self.file_to_transcript)
             self.transcription_content_widget.set_data(self.transcription_store.get_transcription_data())
+            # todo fix the line under
             self.set_labels()
-            # self.set_transcription_labels(self.transcription_store.get_transcription_labels_data())
-            self.set_part_colors()
+            self.set_transcription_labels_in_ui(self.transcription_store.get_transcription_labels_data())
+            self.set_parts_colors_in_transcription_treeview()
             self.time_line = self.transcription_content_widget.get_timeline()
         except TranscriptionStoreException:
             if self.debug:
@@ -191,6 +212,7 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
             if self.debug:
                 print("No existing transcription found")
             return
+        # update UI with media duration
         self.duration = get_media_duration(self.file_to_transcript)
         self.duration_text.set("duration: " + time_code_to_chrono(self.duration))
         self.player_slider_scale.configure(to=self.duration)
@@ -215,6 +237,16 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
 
     def _do_launch_transcription(self):
         self.start_transcription_thread(self.file_to_transcript)
+
+    def add_part_color(self, part_name: str, color: str):
+        """
+        invoked by the TranscriptionTreeView when a part is added
+        """
+        if self.parts_colors is None:
+            self.parts_colors = {}
+        self.parts_colors[part_name] = {"color": color, "description": "no description"}
+        print("add_part_color parts_colors", self.parts_colors)
+        self.transcription_store.set_parts_colors(self.parts_colors)
 
     def start_transcription_thread(self, file_path: str):
         time_limit = 2  # seconds
@@ -288,7 +320,7 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         return self.labelable_widget_frame
 
     def get_ui_transcription_content_labelframe(self, frame: Frame) -> LabelFrame:
-        self.transcription_content_widget = TranscriptionTreeview(frame)
+        self.transcription_content_widget = TranscriptionTreeview(frame, self)
         self.transcription_content_widget_frame = self.transcription_content_widget.get_ui_content(frame)
         self.transcription_treeview = self.transcription_content_widget.transcription_treeview
         # http://tkinter.fdex.eu/doc/event.html#events
@@ -306,7 +338,7 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         values[1] = text
         self.transcription_treeview.item(self.transcription_treeview.rowID, values=values)
 
-    def set_part_colors(self):
+    def set_parts_colors_in_transcription_treeview(self):
         """
         set the new labels
         """
@@ -321,12 +353,29 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
         """
         if labels is None:
             labels = self.transcription_store.get_labels_data()
-            for label_key in labels.keys():
-                self.labelable_widget.add_new_label(new_label_name=label_key, new_color=labels[label_key]["color"],
-                                                    new_description=labels[label_key]["description"])
+            self.labelable_widget.set_label_list_in_labels_treeview(labels)
+            # for label_key in labels.keys():
+            #     self.labelable_widget.add_new_label(new_label_name=label_key, new_color=labels[label_key]["color"],
+            #                                         new_description=labels[label_key]["description"])
         else:
             self.transcription_store.set_labels_data(labels)
         print("aft set_labels", self.transcription_store.json_labels)
+
+    def set_transcription_labels_in_ui(self, transcription_labels: dict):
+        """
+        set the new label positions in the text
+        """
+        tags = []
+        print("*** set_transcription_labels_in_ui", transcription_labels)
+        for row_key in transcription_labels.keys():
+            print("set_transcription_labels_in_ui", transcription_labels[row_key])
+            for beg_key in transcription_labels[str(row_key)].keys():
+                label_found = transcription_labels[str(row_key)][str(beg_key)]['label']
+                if label_found not in tags:
+                    tags.append(label_found)
+            values = self.transcription_treeview.item(row_key)['values']
+            values[2] = " / ".join(tags)
+            self.transcription_treeview.item(row_key, values=values)
 
     def set_transcription_labels(self, transcription_labels: dict):
         """
@@ -379,7 +428,8 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
             print("****", transcription)
             if self.transcription_treeview.rowID in self.transcription_store.json_transcription_labels.keys():
                 self.labelable_widget.set_text(transcription,
-                                               self.transcription_store.json_transcription_labels[self.transcription_treeview.rowID],
+                                               self.transcription_store.json_transcription_labels[
+                                                   self.transcription_treeview.rowID],
                                                self.transcription_store.json_labels)
             else:
                 self.labelable_widget.set_text(transcription, {}, self.transcription_store.json_labels)
@@ -509,3 +559,6 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener):
                 break
             prev_sec = sec
             prev_row_id = row_id
+
+    def get_parts_colors_from_transcription_treeview(self) -> dict:
+        return self.parts_colors
