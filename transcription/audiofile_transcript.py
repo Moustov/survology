@@ -377,17 +377,21 @@ class AudioFileTranscript(tkinter.Tk, LabelableTextAreaListener, TranscriptionTr
             values[2] = " / ".join(tags)
             self.transcription_treeview.item(row_key, values=values)
 
-    def set_transcription_labels(self, transcription_labels: dict):
+    def set_transcription_labels(self, transcription_labels_in_row: dict):
         """
         set the new label positions in the text
         """
-        self.transcription_store.json_transcription_labels[self.transcription_treeview.rowID] = transcription_labels
-
-        values = self.transcription_treeview.item(self.transcription_treeview.rowID)['values']
+        # self.transcription_store.json_transcription_labels[self.transcription_treeview.rowID] = transcription_labels_in_row
+        #
+        # values = self.transcription_treeview.item(self.transcription_treeview.rowID)['values']
+        print("set_transcription_labels transcription_labels_in_row", transcription_labels_in_row)
         tags = []
-        for beg_key in transcription_labels.keys():
-            tags.append(transcription_labels[beg_key]['label'])
-        values[2] = "; ".join(list(dict.fromkeys(tags)))  # add unique labels
+        for beg_key in transcription_labels_in_row.keys():
+            label_found = transcription_labels_in_row[str(beg_key)]['label']
+            if label_found not in tags:
+                tags.append(label_found)
+        values = self.transcription_treeview.item(self.transcription_treeview.rowID)['values']
+        values[2] = " / ".join(tags)
         self.transcription_treeview.item(self.transcription_treeview.rowID, values=values)
 
     def set_player_from_current_tree_row(self):

@@ -11,7 +11,7 @@ class LabelableTextAreaListener:
         """
         pass
 
-    def set_transcription_labels(self, transcription_labels: dict):
+    def set_transcription_labels(self, transcription_labels_in_row: dict):
         """
         set the new label positions in the text
         """

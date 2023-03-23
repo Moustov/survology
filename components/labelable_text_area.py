@@ -56,10 +56,10 @@ class LabelableTextArea(LabelableTextAreaListener):
         if found:
             end_pos = beg_pos + len(selected_text)
             # TODO select the right label
-            print("here --", beg_pos, text.find(selected_text), line_id, selected_text, f"{line_id}.{beg_pos}",
+            print("assign tag --", self.get_current_tag(), beg_pos, text.find(selected_text), line_id, selected_text, f"{line_id}.{beg_pos}",
                   f"{line_id}.{end_pos}")
             self.area_text.tag_add(self.get_current_tag(), f"{line_id}.{beg_pos}", f"{line_id}.{end_pos}")
-            self.tags_in_text[f"{line_id}.{beg_pos}"] = {"label": "here", "end": f"{line_id}.{end_pos}",
+            self.tags_in_text[f"{line_id}.{beg_pos}"] = {"label": self.get_current_tag(), "end": f"{line_id}.{end_pos}",
                                                          "text": selected_text}
             print(f"tags_in_text[{line_id}.{beg_pos}]", self.tags_in_text[f"{line_id}.{beg_pos}"])
         else:
